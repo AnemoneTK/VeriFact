@@ -145,83 +145,87 @@ export default function TransferPage() {
 
   if (!user) {
     return (
-      <div className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-md mx-auto">
-          <div className="bg-white rounded-xl shadow-md p-8">
-            <div className="text-center">
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className="h-16 w-16 text-red-500 mx-auto"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
-                />
-              </svg>
-              <h2 className="mt-4 text-xl font-semibold text-gray-900">
-                กรุณาเข้าสู่ระบบ
-              </h2>
-              <p className="mt-2 text-gray-600">
-                คุณต้องเข้าสู่ระบบเพื่อโอนสินค้า
-              </p>
-              <div className="mt-6">
-                <Link
-                  href="/auth/login"
-                  className="inline-flex items-center px-4 py-2 border border-transparent text-base font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700"
+      <Suspense fallback={<div>กำลังโหลด...</div>}>
+        <div className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+          <div className="max-w-md mx-auto">
+            <div className="bg-white rounded-xl shadow-md p-8">
+              <div className="text-center">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="h-16 w-16 text-red-500 mx-auto"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
                 >
-                  เข้าสู่ระบบ
-                </Link>
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
+                  />
+                </svg>
+                <h2 className="mt-4 text-xl font-semibold text-gray-900">
+                  กรุณาเข้าสู่ระบบ
+                </h2>
+                <p className="mt-2 text-gray-600">
+                  คุณต้องเข้าสู่ระบบเพื่อโอนสินค้า
+                </p>
+                <div className="mt-6">
+                  <Link
+                    href="/auth/login"
+                    className="inline-flex items-center px-4 py-2 border border-transparent text-base font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700"
+                  >
+                    เข้าสู่ระบบ
+                  </Link>
+                </div>
               </div>
             </div>
           </div>
         </div>
-      </div>
+      </Suspense>
     );
   }
 
   if (!isConnected) {
     return (
-      <div className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-md mx-auto">
-          <div className="bg-white rounded-xl shadow-md p-8">
-            <div className="text-center">
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className="h-16 w-16 text-yellow-500 mx-auto"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M13 10V3L4 14h7v7l9-11h-7z"
-                />
-              </svg>
-              <h2 className="mt-4 text-xl font-semibold text-gray-900">
-                เชื่อมต่อกระเป๋าเงิน
-              </h2>
-              <p className="mt-2 text-gray-600">
-                กรุณาเชื่อมต่อกระเป๋าเงินของคุณเพื่อโอนสินค้า
-              </p>
-              <div className="mt-6">
-                <button
-                  onClick={connectWallet}
-                  className="inline-flex items-center px-4 py-2 border border-transparent text-base font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700"
+      <Suspense fallback={<div>กำลังโหลด...</div>}>
+        <div className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+          <div className="max-w-md mx-auto">
+            <div className="bg-white rounded-xl shadow-md p-8">
+              <div className="text-center">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="h-16 w-16 text-yellow-500 mx-auto"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
                 >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M13 10V3L4 14h7v7l9-11h-7z"
+                  />
+                </svg>
+                <h2 className="mt-4 text-xl font-semibold text-gray-900">
                   เชื่อมต่อกระเป๋าเงิน
-                </button>
+                </h2>
+                <p className="mt-2 text-gray-600">
+                  กรุณาเชื่อมต่อกระเป๋าเงินของคุณเพื่อโอนสินค้า
+                </p>
+                <div className="mt-6">
+                  <button
+                    onClick={connectWallet}
+                    className="inline-flex items-center px-4 py-2 border border-transparent text-base font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700"
+                  >
+                    เชื่อมต่อกระเป๋าเงิน
+                  </button>
+                </div>
               </div>
             </div>
           </div>
         </div>
-      </div>
+      </Suspense>
     );
   }
 

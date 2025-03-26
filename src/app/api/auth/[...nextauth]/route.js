@@ -15,10 +15,6 @@ export const authOptions = {
             return null;
           }
 
-          // ในกรณีนี้เราจะใช้ address เป็นข้อมูลการระบุตัวตน
-          // ไม่จำเป็นต้องตรวจสอบลายเซ็นในตัวอย่างนี้
-          // แต่ในสภาพแวดล้อมจริงควรตรวจสอบลายเซ็นด้วย ethers หรือ web3.js
-
           return {
             id: credentials.address,
             name: `${credentials.address.substring(
@@ -38,9 +34,10 @@ export const authOptions = {
       },
     }),
   ],
+  secret: process.env.NEXTAUTH_SECRET, // เพิ่มบรรทัดนี้
   session: {
     strategy: "jwt",
-    maxAge: 30 * 24 * 60 * 60, // 30 วัน
+    maxAge: 30 * 24 * 60 * 60,
   },
   callbacks: {
     async jwt({ token, user }) {

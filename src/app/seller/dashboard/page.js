@@ -15,7 +15,9 @@ export default function SellerDashboard() {
   const [products, setProducts] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [formData, setFormData] = useState({
-    details: "",
+    productName: "",
+    productModel: "",
+    serialNumber: "",
     initialPrice: "",
   });
   const [showProfileMenu, setShowProfileMenu] = useState(false);
@@ -109,18 +111,13 @@ export default function SellerDashboard() {
   const handleRegisterProduct = async (e) => {
     e.preventDefault();
 
-    if (!verifactContract || !account) {
-      showError("กรุณาเชื่อมต่อกระเป๋าเงิน");
-      return;
-    }
+    const details = `${formData.productName} | ${formData.productModel} | ${formData.serialNumber}`;
 
     try {
-      setIsLoading(true);
-
-      const { details, initialPrice } = formData;
-
       const result = await verifactContract.methods
-        .registerProduct(details, initialPrice)
+
+        .registerProduct(details, formData.initialPrice)
+
         .send({ from: account });
 
       const productId = result.events.ProductRegistered.returnValues.productId;
@@ -518,29 +515,59 @@ export default function SellerDashboard() {
 
           <form onSubmit={handleRegisterProduct} className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="md:col-span-2">
+              <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  รายละเอียดสินค้า
+                  ชื่อสินค้า
                 </label>
+
                 <input
                   type="text"
-                  name="details"
-                  value={formData.details}
+                  name="productName"
+                  value={formData.productName}
                   onChange={handleInputChange}
-                  placeholder="ชื่อสินค้า | รุ่น | หมายเลขซีเรียล"
+                  placeholder="ชื่อสินค้า"
                   className="w-full px-4 py-2 border rounded-md focus:ring focus:ring-blue-300 focus:outline-none"
                   required
                 />
-                <p className="text-xs text-gray-500 mt-1">
-                  แนะนำ: ใช้รูปแบบ ชื่อสินค้า | รุ่น | หมายเลขซีเรียล
-                  เพื่อให้อ่านง่าย
-                </p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  รุ่น
+                </label>
+
+                <input
+                  type="text"
+                  name="productModel"
+                  value={formData.productModel}
+                  onChange={handleInputChange}
+                  placeholder="รุ่นของสินค้า"
+                  className="w-full px-4 py-2 border rounded-md focus:ring focus:ring-blue-300 focus:outline-none"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  หมายเลขซีเรียล
+                </label>
+
+                <input
+                  type="text"
+                  name="serialNumber"
+                  value={formData.serialNumber}
+                  onChange={handleInputChange}
+                  placeholder="หมายเลขซีเรียล"
+                  className="w-full px-4 py-2 border rounded-md focus:ring focus:ring-blue-300 focus:outline-none"
+                  required
+                />
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   ราคา (บาท)
                 </label>
+
                 <input
                   type="number"
                   name="initialPrice"

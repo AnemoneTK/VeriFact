@@ -1,10 +1,9 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   output: "export",
-  // If you're using NextAuth with a static export, you might need to remove API routes
-  // or handle authentication differently
+  // Additional configuration can go here
 
-  // Disable server-side rendering for the NextAuth route
+  // Webpack configuration if needed
   webpack: (config, { isServer }) => {
     if (!isServer) {
       config.resolve.fallback = {
@@ -18,4 +17,4 @@ const nextConfig = {
   },
 };
 
-module.exports = nextConfig;
+export default nextConfig;

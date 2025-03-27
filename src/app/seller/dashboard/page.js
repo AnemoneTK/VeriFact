@@ -667,13 +667,13 @@ export default function SellerDashboard() {
                         )}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {product.currentOwner.toLowerCase() ===
+                        {product?.currentOwner?.toLowerCase() ===
                         account.toLowerCase()
                           ? "คุณ (ผู้ขาย)"
-                          : `${product.currentOwner.substring(
+                          : `${product?.currentOwner?.substring(
                               0,
                               6
-                            )}...${product.currentOwner.substring(
+                            )}...${product?.currentOwner?.substring(
                               product.currentOwner.length - 4
                             )}`}
                       </td>
@@ -686,7 +686,7 @@ export default function SellerDashboard() {
                             ตรวจสอบ
                           </Link>
 
-                          {product.currentOwner.toLowerCase() ===
+                          {product?.currentOwner?.toLowerCase() ===
                             account.toLowerCase() &&
                             product.isActive && (
                               <button

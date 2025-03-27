@@ -4,6 +4,7 @@ const nextConfig = {
     ignoreDuringBuilds: true,
   },
   output: "standalone",
+  basePath: "",
 };
 
 export default nextConfig;

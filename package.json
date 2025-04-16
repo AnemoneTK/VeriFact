@@ -14,6 +14,7 @@
     "@heroicons/react": "^2.2.0",
     "@prisma/client": "^6.5.0",
     "@walletconnect/web3-provider": "^1.8.0",
+    "antd": "^5.24.7",
     "ethers": "^6.13.5",
     "next": "^15.2.3",
     "next-auth": "^4.24.11",

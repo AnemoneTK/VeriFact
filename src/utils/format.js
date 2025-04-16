@@ -20,7 +20,11 @@ export function formatAddress(address, startLength = 6, endLength = 4) {
  */
 export function formatDate(timestamp) {
   try {
-    const date = timestamp instanceof Date ? timestamp : new Date(timestamp);
+    // แปลงเป็น Number หากเป็น BigInt
+    const numTimestamp =
+      typeof timestamp === "bigint" ? Number(timestamp) : timestamp;
+
+    const date = new Date(numTimestamp);
 
     // ถ้าวันที่ไม่ถูกต้อง
     if (isNaN(date.getTime())) {

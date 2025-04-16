@@ -3,7 +3,7 @@ import { Providers } from "./providers";
 // import "@/styles/globals.css";
 import "../styles/globals.css";
 import { Prompt } from "next/font/google";
-
+import "antd/dist/reset.css";
 // const prompt = Prompt({ subsets: ["latin"] });
 const prompt = Prompt({
   subsets: ["thai", "latin"],

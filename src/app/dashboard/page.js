@@ -545,12 +545,12 @@ export default function DashboardPage() {
       <div className="py-8 px-4 sm:px-6 lg:px-8">
         <div className="max-w-6xl mx-auto">
           {/* หัวข้อหลักของหน้า */}
-          <div className="bg-white rounded-xl shadow-sm p-6 mb-8">
+          {/* <div className="bg-white rounded-xl shadow-sm p-6 mb-8">
             <h1 className="text-2xl font-bold text-gray-900">แดชบอร์ด</h1>
             <p className="mt-1 text-gray-500">
               ยินดีต้อนรับกลับมา, {user.name || user.email}
             </p>
-          </div>
+          </div> */}
 
           {/* ส่วนแสดงสินค้าของฉัน */}
           <div className="bg-white rounded-xl shadow-sm p-6 mb-8">
@@ -663,7 +663,7 @@ export default function DashboardPage() {
                             วันที่ได้รับ:
                           </span>
                           <span className="text-sm text-gray-700">
-                            {formatDate(product.createdAt * 1000)}
+                            {formatDate(Number(product.createdAt) * 1000)}
                           </span>
                         </div>
                         <div className="flex justify-between">

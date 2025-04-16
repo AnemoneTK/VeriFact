@@ -1,6 +1,6 @@
 // src/app/verify/[id]/page.js
 "use client";
-
+import { use } from "react";
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -9,7 +9,10 @@ import { useToast } from "@/contexts/ToastContext";
 import { formatDate } from "@/utils/format";
 
 export default function VerifyResultPage({ params }) {
-  const productId = params.id;
+  // ใช้ use() เพื่อ unwrap params ที่เป็น Promise
+  const unwrappedParams = use(params);
+  const productId = unwrappedParams.id;
+
   const [productData, setProductData] = useState(null);
   const [transferHistory, setTransferHistory] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -35,34 +38,11 @@ export default function VerifyResultPage({ params }) {
       }
 
       try {
-        // ถ้าไม่มีการเชื่อมต่อกับบล็อกเชน ให้แสดงข้อมูลแบบจำลอง
+        // หากไม่มีการเชื่อมต่อกับ contract ให้แสดงปุ่มเชื่อมต่อ
         if (!isConnected || !verifactContract) {
-          // จำลองข้อมูลสำหรับกรณีที่ไม่ได้เชื่อมต่อกับบล็อกเชน
-          setTimeout(() => {
-            const mockData = {
-              productId: productId,
-              details: "สินค้าตัวอย่าง | รุ่น Demo | หมายเลขซีเรียล ABC123",
-              initialPrice: "9999",
-              currentOwner: "0x1234567890123456789012345678901234567890",
-              createdAt: Math.floor(Date.now() / 1000) - 60 * 60 * 24 * 30, // 30 วันที่แล้ว
-              isActive: true,
-            };
-
-            const mockHistory = [
-              {
-                from: "0x0000000000000000000000000000000000000000",
-                to: "0x1234567890123456789012345678901234567890",
-                price: "9999",
-                timestamp: Math.floor(Date.now() / 1000) - 60 * 60 * 24 * 30,
-              },
-            ];
-
-            setProductData(mockData);
-            setTransferHistory(mockHistory);
-            setIsAuthentic(true);
-            setVerificationStatus("verified");
-            setIsLoading(false);
-          }, 1500);
+          setIsLoading(false);
+          setVerificationStatus("error");
+          showError("กรุณาเชื่อมต่อกระเป๋าเงินเพื่อตรวจสอบสินค้า");
           return;
         }
 
@@ -82,16 +62,44 @@ export default function VerifyResultPage({ params }) {
         const product = await verifactContract.methods
           .getProduct(productId)
           .call();
-        setProductData(product);
+
+        // แปลงข้อมูลที่ได้จาก Smart Contract ให้อยู่ในรูปแบบที่ใช้งานได้
+        const formattedProduct = {
+          productId: product[0]?.toString() || productId,
+          details: product[1] || "ไม่มีรายละเอียด",
+          initialPrice: product[2]?.toString() || "0",
+          currentOwner: product[3] || "ไม่ระบุเจ้าของ",
+          createdAt: product[4]?.toString() || "0",
+          isActive: product[5] || false,
+        };
+
+        setProductData(formattedProduct);
 
         // ดึงประวัติการโอน
         const history = await verifactContract.methods
           .getTransferHistory(productId)
           .call();
-        setTransferHistory(history);
 
-        setIsAuthentic(product.isActive);
-        setVerificationStatus(product.isActive ? "verified" : "unverified");
+        // แปลงข้อมูลประวัติการโอนให้อยู่ในรูปแบบที่ใช้งานได้
+        const formattedHistory = history.map((item) => ({
+          from: item[0] || "0x0000000000000000000000000000000000000000",
+          to: item[1] || "ไม่ระบุ",
+          price: item[2]?.toString() || "0",
+          timestamp: item[3]?.toString() || "0",
+        }));
+
+        setTransferHistory(formattedHistory);
+
+        // ตรวจสอบว่าเป็นสินค้าใหม่ที่ยังไม่มีการขายต่อหรือไม่
+        const isNewProduct =
+          formattedHistory.length === 1 &&
+          formattedHistory[0].from ===
+            "0x0000000000000000000000000000000000000000";
+
+        setIsAuthentic(formattedProduct.isActive);
+        setVerificationStatus(
+          formattedProduct.isActive ? "verified" : "unverified"
+        );
         setIsLoading(false);
       } catch (error) {
         console.error("Error fetching product data:", error);
@@ -209,6 +217,37 @@ export default function VerifyResultPage({ params }) {
     }
   };
 
+  // ฟังก์ชันเพื่อตรวจสอบว่าเป็นสินค้าใหม่ที่ยังไม่มีการขายต่อหรือไม่
+  const isNewUnownedProduct = () => {
+    if (!transferHistory || transferHistory.length === 0) return false;
+
+    // เป็นสินค้าใหม่เมื่อมีประวัติเพียง 1 รายการ และเป็นการสร้างใหม่จากผู้ผลิต (address 0x0)
+    return (
+      transferHistory.length === 1 &&
+      transferHistory[0].from === "0x0000000000000000000000000000000000000000"
+    );
+  };
+
+  // ตรวจสอบผู้ถือครองปัจจุบัน
+  const renderCurrentOwner = () => {
+    if (!productData) return "ไม่พบข้อมูล";
+
+    // กรณีเป็นสินค้าใหม่ที่ยังไม่มีการขายต่อ
+    if (isNewUnownedProduct()) {
+      return "ยังไม่มีเจ้าของ (สินค้าใหม่จากผู้ผลิต)";
+    }
+
+    // กรณีมี address เป็น 0x0
+    if (
+      productData.currentOwner === "0x0000000000000000000000000000000000000000"
+    ) {
+      return "ไม่มีเจ้าของ";
+    }
+
+    // กรณีปกติ
+    return truncateAddress(productData.currentOwner, 8, 6);
+  };
+
   return (
     <main className="min-h-screen bg-gray-50">
       {/* ส่วนหัว */}
@@ -267,8 +306,8 @@ export default function VerifyResultPage({ params }) {
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         {/* ลิงก์กลับไปหน้าตรวจสอบ */}
         <div className="mb-6">
-          <Link
-            href="/verify"
+          <button
+            onClick={() => router.back()}
             className="inline-flex items-center text-blue-600 hover:text-blue-800"
           >
             <svg
@@ -283,8 +322,8 @@ export default function VerifyResultPage({ params }) {
                 clipRule="evenodd"
               />
             </svg>
-            กลับไปที่หน้าตรวจสอบ
-          </Link>
+            กลับไปหน้าก่อนหน้า
+          </button>
         </div>
 
         {/* ส่วนแสดงผลการตรวจสอบ */}
@@ -388,10 +427,7 @@ export default function VerifyResultPage({ params }) {
                             เจ้าของปัจจุบัน
                           </dt>
                           <dd className="mt-1 text-sm text-gray-900">
-                            {productData.currentOwner ===
-                            "0x0000000000000000000000000000000000000000"
-                              ? "ไม่มีเจ้าของ"
-                              : truncateAddress(productData.currentOwner, 8, 6)}
+                            {renderCurrentOwner()}
                           </dd>
                         </div>
                         <div>
@@ -399,7 +435,7 @@ export default function VerifyResultPage({ params }) {
                             วันที่ลงทะเบียน
                           </dt>
                           <dd className="mt-1 text-sm text-gray-900">
-                            {formatDate(productData.createdAt * 1000)}
+                            {formatDate(Number(productData.createdAt) * 1000)}
                           </dd>
                         </div>
                         <div>
@@ -462,9 +498,11 @@ export default function VerifyResultPage({ params }) {
                           </thead>
                           <tbody className="bg-white divide-y divide-gray-200">
                             {transferHistory.map((transfer, index) => (
-                              <tr key={index}>
+                              <tr key={`transfer-${index}`}>
                                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                                  {formatDate(transfer.timestamp * 1000)}
+                                  {formatDate(
+                                    Number(transfer.timestamp) * 1000
+                                  )}
                                 </td>
                                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
                                   {transfer.from ===
@@ -476,7 +514,7 @@ export default function VerifyResultPage({ params }) {
                                   {truncateAddress(transfer.to, 4, 4)}
                                 </td>
                                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                                  {transfer.price > 0
+                                  {Number(transfer.price) > 0
                                     ? `${transfer.price} บาท`
                                     : "-"}
                                 </td>

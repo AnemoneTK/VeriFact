@@ -2,9 +2,13 @@
 
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { useWeb3 } from "./Web3Context";
-import { signIn, signOut as nextAuthSignOut } from "next-auth/react";
+import {
+  signIn as nextAuthSignIn,
+  signOut as nextAuthSignOut,
+  useSession,
+} from "next-auth/react";
 
-// สร้าง Context สำหรับการจัดการ Authentication
+// Create Context for Authentication
 const AuthContext = createContext();
 
 export function AuthProvider({ children }) {
@@ -16,14 +20,20 @@ export function AuthProvider({ children }) {
     error: web3Error,
     formatAddress,
   } = useWeb3();
+
+  const { data: session } = useSession();
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // อัปเดตสถานะผู้ใช้เมื่อมีการเปลี่ยนแปลงใน account
+  // Update user state when session or account changes
   useEffect(() => {
-    if (isConnected && account) {
-      // มีการเชื่อมต่อ wallet
+    if (session?.user) {
+      // If we have a session from NextAuth, use that
+      setUser(session.user);
+      setLoading(false);
+    } else if (isConnected && account) {
+      // If no session but wallet is connected, create a user object
       setUser({
         id: account,
         address: account,
@@ -38,46 +48,45 @@ export function AuthProvider({ children }) {
       setUser(null);
       setLoading(false);
     }
-  }, [account, isConnected, formatAddress]);
+  }, [session, account, isConnected, formatAddress]);
 
-  // อัปเดตข้อผิดพลาดจาก Web3Context
+  // Update error from Web3Context
   useEffect(() => {
     if (web3Error) {
       setError(web3Error);
     }
   }, [web3Error]);
 
-  // ฟังก์ชันเข้าสู่ระบบด้วย wallet
+  // Sign in function
   const login = async () => {
-    console.log("กำลังเริ่มการเข้าสู่ระบบ");
+    console.log("Starting login process");
     setLoading(true);
     setError(null);
 
     try {
-      // เชื่อมต่อกับ wallet ก่อน
-      console.log("กำลังเชื่อมต่อกับ wallet");
+      // First connect wallet
+      console.log("Connecting to wallet");
       let walletAddress;
 
       try {
         walletAddress = await connectWallet();
-        console.log("เชื่อมต่อกับ wallet สำเร็จ:", walletAddress);
+        console.log("Wallet connected successfully:", walletAddress);
       } catch (walletError) {
-        console.error("ไม่สามารถเชื่อมต่อกับ wallet ได้:", walletError);
-        // กรณีผู้ใช้ยกเลิกการเชื่อมต่อ
+        console.error("Error connecting wallet:", walletError);
+
+        // Handle user cancellation
         if (
-          walletError &&
-          (walletError.code === 4001 ||
-            (walletError.message &&
-              (walletError.message.includes("ผู้ใช้ยกเลิก") ||
-                walletError.message.includes("User denied") ||
-                walletError.message.includes("user rejected"))))
+          walletError?.code === 4001 ||
+          (walletError?.message &&
+            (walletError.message.includes("User denied") ||
+              walletError.message.includes("user rejected")))
         ) {
           throw new Error("ผู้ใช้ยกเลิกการเชื่อมต่อ");
         }
 
-        // ในกรณีที่ connectWallet ล้มเหลวแต่ไม่มีข้อความแสดงข้อผิดพลาด
+        // If wallet is already connected
         if (isConnected && account) {
-          console.log("ตรวจพบว่าเชื่อมต่อแล้ว, ใช้บัญชีปัจจุบัน:", account);
+          console.log("Already connected, using current account:", account);
           walletAddress = account;
         } else {
           throw walletError || new Error("ไม่สามารถเชื่อมต่อกับ wallet ได้");
@@ -85,39 +94,35 @@ export function AuthProvider({ children }) {
       }
 
       if (!walletAddress) {
-        console.error("ไม่มี wallet address");
+        console.error("No wallet address available");
         throw new Error("ไม่สามารถดึงที่อยู่ wallet ได้");
       }
 
       try {
-        // เข้าสู่ระบบด้วย NextAuth โดยใช้ address
-        console.log("กำลังเข้าสู่ระบบด้วย NextAuth, address:", walletAddress);
-        const result = await signIn("credentials", {
+        // Sign in with NextAuth using the wallet address
+        console.log("Signing in with NextAuth, address:", walletAddress);
+        const result = await nextAuthSignIn("credentials", {
           address: walletAddress,
           redirect: false,
         });
 
         if (result?.error) {
-          console.error("เข้าสู่ระบบไม่สำเร็จ:", result.error);
+          console.error("NextAuth sign in failed:", result.error);
 
-          // ถ้า wallet เชื่อมต่อแล้ว ให้ถือว่าเข้าสู่ระบบสำเร็จแม้ว่า NextAuth จะมีปัญหา
+          // If wallet is connected but NextAuth fails, still consider logged in
           if (isConnected && account) {
-            console.log(
-              "ข้ามการเข้าสู่ระบบด้วย NextAuth เนื่องจากเชื่อมต่อ wallet แล้ว"
-            );
+            console.log("Skipping NextAuth due to wallet connection");
             return true;
           }
 
           throw new Error(result.error);
         }
       } catch (authError) {
-        console.error("ข้อผิดพลาดในการเรียกใช้ NextAuth:", authError);
+        console.error("Error calling NextAuth:", authError);
 
-        // แม้ NextAuth จะมีปัญหา แต่ถ้ามีการเชื่อมต่อ wallet แล้ว ให้ถือว่าเข้าสู่ระบบสำเร็จ
+        // If wallet is connected but NextAuth has problems, still consider logged in
         if (isConnected && account) {
-          console.log(
-            "ข้ามการเข้าสู่ระบบด้วย NextAuth เนื่องจากเชื่อมต่อ wallet แล้ว"
-          );
+          console.log("Skipping NextAuth due to wallet connection");
           return true;
         }
 
@@ -126,19 +131,18 @@ export function AuthProvider({ children }) {
         );
       }
 
-      console.log("เข้าสู่ระบบสำเร็จ");
+      console.log("Login successful");
       return true;
     } catch (error) {
-      console.error("เกิดข้อผิดพลาดในการเข้าสู่ระบบ:", error);
+      console.error("Login error:", error);
 
-      // กรณีผู้ใช้ยกเลิกการเชื่อมต่อ
+      // User cancellation handling
       if (
-        error &&
-        (error.code === 4001 ||
-          (error.message &&
-            (error.message.includes("ผู้ใช้ยกเลิก") ||
-              error.message.includes("User denied") ||
-              error.message.includes("user rejected"))))
+        error?.code === 4001 ||
+        (error?.message &&
+          (error.message.includes("ผู้ใช้ยกเลิก") ||
+            error.message.includes("User denied") ||
+            error.message.includes("user rejected")))
       ) {
         setError("ผู้ใช้ยกเลิกการเชื่อมต่อ");
       } else {
@@ -151,36 +155,36 @@ export function AuthProvider({ children }) {
     }
   };
 
-  // ฟังก์ชันออกจากระบบ
+  // Sign out function
   const logout = async () => {
     setLoading(true);
     setError(null);
     try {
-      console.log("กำลังออกจากระบบ...");
+      console.log("Logging out...");
 
-      // ลบค่าใน localStorage
+      // Clear localStorage
       if (typeof window !== "undefined") {
         localStorage.removeItem("walletConnected");
       }
 
-      // ตัดการเชื่อมต่อ wallet
-      console.log("กำลังตัดการเชื่อมต่อ wallet");
+      // Disconnect wallet
+      console.log("Disconnecting wallet");
       await disconnectWallet();
 
-      // ออกจากระบบ NextAuth
+      // Sign out from NextAuth
       try {
-        console.log("กำลังออกจากระบบ NextAuth");
+        console.log("Signing out from NextAuth");
         await nextAuthSignOut({ redirect: false });
       } catch (authError) {
-        console.error("เกิดข้อผิดพลาดในการออกจากระบบ NextAuth:", authError);
-        // ถ้า NextAuth มีปัญหา ก็ไม่เป็นไร เพราะเราได้ตัดการเชื่อมต่อ wallet แล้ว
+        console.error("Error signing out from NextAuth:", authError);
+        // Continue even if NextAuth has issues, as we've disconnected the wallet
       }
 
       setUser(null);
-      console.log("ออกจากระบบสำเร็จ");
+      console.log("Logout successful");
       return true;
     } catch (error) {
-      console.error("เกิดข้อผิดพลาดในการออกจากระบบ:", error);
+      console.error("Logout error:", error);
       setError(error.message || "เกิดข้อผิดพลาดในการออกจากระบบ");
       return false;
     } finally {
@@ -188,12 +192,12 @@ export function AuthProvider({ children }) {
     }
   };
 
-  // ฟังก์ชันลบข้อผิดพลาด
+  // Clear error function
   const clearError = () => {
     setError(null);
   };
 
-  // ค่าที่ส่งไปให้ผู้ใช้งาน Context
+  // Context value
   const value = {
     user,
     loading,

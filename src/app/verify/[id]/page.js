@@ -15,6 +15,7 @@ export default function VerifyResultPage({ params }) {
 
   const [productData, setProductData] = useState(null);
   const [transferHistory, setTransferHistory] = useState([]);
+  const [originalSeller, setOriginalSeller] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isAuthentic, setIsAuthentic] = useState(null);
   const [verificationStatus, setVerificationStatus] = useState("loading"); // loading, verified, unverified, error
@@ -71,6 +72,7 @@ export default function VerifyResultPage({ params }) {
           currentOwner: product[3] || "ไม่ระบุเจ้าของ",
           createdAt: product[4]?.toString() || "0",
           isActive: product[5] || false,
+          designatedSuccessor: product[6] || null,
         };
 
         setProductData(formattedProduct);
@@ -90,6 +92,21 @@ export default function VerifyResultPage({ params }) {
 
         setTransferHistory(formattedHistory);
 
+        // ดึงข้อมูลผู้ขายดั้งเดิม (original seller)
+        if (formattedHistory.length > 0) {
+          const originalSellerAddress = formattedHistory[0].to;
+
+          try {
+            const sellerInfo = await verifactContract.methods
+              .getSellerInfo(originalSellerAddress)
+              .call();
+
+            setOriginalSeller(sellerInfo);
+          } catch (error) {
+            console.log("Original seller might not be registered anymore");
+          }
+        }
+
         // ตรวจสอบว่าเป็นสินค้าใหม่ที่ยังไม่มีการขายต่อหรือไม่
         const isNewProduct =
           formattedHistory.length === 1 &&
@@ -106,19 +123,6 @@ export default function VerifyResultPage({ params }) {
         showError("ไม่สามารถดึงข้อมูลสินค้าได้ โปรดลองอีกครั้ง");
         setVerificationStatus("error");
         setIsLoading(false);
-      }
-      if (transferHistory.length > 0) {
-        const originalSellerAddress = transferHistory[0].to;
-
-        try {
-          const sellerInfo = await verifactContract.methods
-            .getSellerInfo(originalSellerAddress)
-            .call();
-
-          setOriginalSeller(sellerInfo);
-        } catch (error) {
-          console.log("Original seller might not be registered anymore");
-        }
       }
     };
 
@@ -457,6 +461,20 @@ export default function VerifyResultPage({ params }) {
                           </dt>
                           <dd className="mt-1 text-sm text-gray-900">
                             {productData.initialPrice} บาท
+                          </dd>
+                        </div>
+                        <div>
+                          <dt className="text-sm font-medium text-gray-500">
+                            ลงทะเบียนโดย
+                          </dt>
+                          <dd className="mt-1 text-sm text-gray-900">
+                            {originalSeller
+                              ? `${originalSeller.storeName} (${truncateAddress(
+                                  originalSeller.sellerAddress
+                                )})`
+                              : transferHistory.length > 0
+                              ? truncateAddress(transferHistory[0].to, 8, 6)
+                              : "ไม่ทราบผู้ลงทะเบียน"}
                           </dd>
                         </div>
                         <div className="md:col-span-2">

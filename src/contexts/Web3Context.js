@@ -537,6 +537,54 @@ export function Web3Provider({ children }) {
     return methods;
   }, [verifactContract]);
 
+  const setSuccessor = useCallback(
+    async (productId, successorAddress) => {
+      if (!verifactContract || !account) return null;
+      try {
+        const result = await verifactContract.methods
+          .setSuccessor(productId, successorAddress)
+          .send({ from: account });
+        return result;
+      } catch (error) {
+        console.error("Error setting successor:", error);
+        throw error;
+      }
+    },
+    [verifactContract, account]
+  );
+
+  const requestSuccession = useCallback(
+    async (productId) => {
+      if (!verifactContract || !account) return null;
+      try {
+        const result = await verifactContract.methods
+          .requestSuccession(productId)
+          .send({ from: account });
+        return result;
+      } catch (error) {
+        console.error("Error requesting succession:", error);
+        throw error;
+      }
+    },
+    [verifactContract, account]
+  );
+
+  const approveSuccession = useCallback(
+    async (productId, successorAddress, price = 0) => {
+      if (!verifactContract || !account) return null;
+      try {
+        const result = await verifactContract.methods
+          .approveSuccession(productId, successorAddress, price)
+          .send({ from: account });
+        return result;
+      } catch (error) {
+        console.error("Error approving succession:", error);
+        throw error;
+      }
+    },
+    [verifactContract, account]
+  );
+
   // ค่าที่จะส่งไปยัง Provider
   const value = {
     provider,
@@ -568,6 +616,9 @@ export function Web3Provider({ children }) {
     formatAddress,
     persistentConnection,
     checkIsAdmin,
+    setSuccessor,
+    requestSuccession,
+    approveSuccession,
   };
 
   return <Web3Context.Provider value={value}>{children}</Web3Context.Provider>;

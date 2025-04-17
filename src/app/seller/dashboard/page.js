@@ -139,9 +139,9 @@ export default function SellerDashboard() {
     const details = `${formData.productName} | ${formData.productModel} | ${formData.serialNumber}`;
 
     try {
-      // แก้ไขส่วนนี้
+      const initialPrice = parseInt(formData.initialPrice, 10);
       const result = await verifactContract.methods
-        .registerProduct(details, formData.initialPrice)
+        .registerProduct(details, initialPrice)
         .send({ from: account });
 
       console.log("Transaction result:", result);

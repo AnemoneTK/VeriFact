@@ -56,7 +56,17 @@ export default function DashboardPage() {
             const product = await verifactContract.methods
               .getProduct(productId)
               .call();
-            return product;
+
+            // เพิ่มข้อมูลผู้รับสืบทอด
+            const successorRequests = await verifactContract.methods
+              .getSuccessionRequests(productId)
+              .call();
+
+            return {
+              ...product,
+              successorRequests,
+              hasSuccessorRequest: successorRequests.length > 0,
+            };
           })
         );
 
@@ -673,6 +683,17 @@ export default function DashboardPage() {
                           </span>
                         </div>
                       </div>
+                      {product.designatedSuccessor && (
+                        <div className="text-sm text-gray-600">
+                          ผู้รับสืบทอด:{" "}
+                          {truncateAddress(product.designatedSuccessor)}
+                          {product.hasSuccessorRequest && (
+                            <span className="ml-2 px-2 py-1 bg-yellow-100 text-yellow-800 rounded-full text-xs">
+                              มีคำขอ
+                            </span>
+                          )}
+                        </div>
+                      )}
 
                       <div className="mt-6 flex space-x-2">
                         <Link

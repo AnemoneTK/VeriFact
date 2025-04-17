@@ -22,10 +22,14 @@ export default function VerifyResultPage({ params }) {
   const { verifactContract, isConnected, connectWallet } = useWeb3();
   const { showError, showSuccess } = useToast();
   const router = useRouter();
-
+  const [successorRequests, setSuccessorRequests] = useState([]);
   // ฟังก์ชันย่อที่อยู่กระเป๋าเงิน
   const truncateAddress = (address, startLength = 6, endLength = 4) => {
     if (!address) return "";
+
+    if (address === "0x0000000000000000000000000000000000000000") {
+      return "-";
+    }
     return `${address.slice(0, startLength)}...${address.slice(-endLength)}`;
   };
 
@@ -102,6 +106,20 @@ export default function VerifyResultPage({ params }) {
               .call();
 
             setOriginalSeller(sellerInfo);
+            if (isConnected && verifactContract && productData) {
+              try {
+                const requests = await verifactContract.methods
+                  .getSuccessionRequests(productId)
+                  .call();
+
+                setSuccessorRequests(requests);
+              } catch (requestError) {
+                console.error(
+                  "Error fetching succession requests:",
+                  requestError
+                );
+              }
+            }
           } catch (error) {
             console.log("Original seller might not be registered anymore");
           }
@@ -485,7 +503,37 @@ export default function VerifyResultPage({ params }) {
                             {productData.details}
                           </dd>
                         </div>
+                        {productData.designatedSuccessor && (
+                          <div>
+                            <dt className="text-sm font-medium text-gray-500">
+                              ผู้รับสืบทอด
+                            </dt>
+                            <dd className="mt-1 text-sm text-gray-900">
+                              {truncateAddress(productData.designatedSuccessor)}
+                            </dd>
+                          </div>
+                        )}
                       </dl>
+                    </div>
+                  </div>
+                )}
+                {successorRequests && successorRequests.length > 0 && (
+                  <div>
+                    <h3 className="text-lg font-medium text-gray-900 mb-4">
+                      ประวัติการร้องขอรับสืบทอด
+                    </h3>
+                    <div className="bg-white rounded-lg p-4">
+                      {successorRequests.map((successor, index) => (
+                        <div
+                          key={index}
+                          className="mb-2 flex items-center justify-between"
+                        >
+                          <span className="text-sm text-gray-700">
+                            {successor.substring(0, 6)}...
+                            {successor.substring(successor.length - 4)}
+                          </span>
+                        </div>
+                      ))}
                     </div>
                   </div>
                 )}

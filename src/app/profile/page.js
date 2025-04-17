@@ -12,7 +12,7 @@ export default function ProfilePage() {
   const { account, isConnected, networkId } = useWeb3();
   const { showError, showSuccess } = useToast();
   const router = useRouter();
-
+  const [successorProducts, setSuccessorProducts] = useState([]);
   // สำหรับคัดลอกที่อยู่กระเป๋าเงิน
   const [copied, setCopied] = useState(false);
 
@@ -23,6 +23,38 @@ export default function ProfilePage() {
       router.push("/auth/login");
     }
   }, [isAuthenticated, router, showError]);
+
+  useEffect(() => {
+    const fetchSuccessorProducts = async () => {
+      if (!isConnected || !verifactContract || !account) return;
+
+      try {
+        const productIds = await verifactContract.methods
+          .getProductsByOwner(account)
+          .call();
+
+        const productsWithSuccessor = await Promise.all(
+          productIds.map(async (productId) => {
+            const product = await verifactContract.methods
+              .getProduct(productId)
+              .call();
+
+            return product.designatedSuccessor
+              ? { ...product, productId }
+              : null;
+          })
+        );
+
+        setSuccessorProducts(
+          productsWithSuccessor.filter((product) => product !== null)
+        );
+      } catch (error) {
+        console.error("Error fetching successor products:", error);
+      }
+    };
+
+    fetchSuccessorProducts();
+  }, [account, verifactContract, isConnected]);
 
   // ฟังก์ชันคัดลอกที่อยู่กระเป๋าเงิน
   const copyWalletAddress = () => {
@@ -248,6 +280,25 @@ export default function ProfilePage() {
                 </div>
               )}
             </div>
+            {successorProducts.length > 0 && (
+              <div className="bg-white shadow-md rounded-lg p-6 mb-6">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                  สินค้าที่มีผู้รับสืบทอด
+                </h3>
+                {successorProducts.map((product) => (
+                  <div
+                    key={product.productId}
+                    className="flex justify-between items-center mb-2 pb-2 border-b"
+                  >
+                    <span>{product.details.split("|")[0]}</span>
+                    <span className="text-sm text-gray-500">
+                      ผู้รับสืบทอด:{" "}
+                      {truncateAddress(product.designatedSuccessor)}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
 
             <div className="border-t border-gray-200 pt-6 mt-6">
               <h3 className="text-lg font-semibold text-gray-900 mb-4">

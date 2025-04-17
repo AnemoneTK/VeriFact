@@ -1,12 +1,9 @@
 export const VERIFACT_CONTRACT_ADDRESS =
-  "0x0fd6af5B26fF90261f8aBfae120086d99463D5d2";
+  // "0x0fd6af5B26fF90261f8aBfae120086d99463D5d2";
+  "0x7E40f881b5D3eD299215DcD2BEa032dB6113E105";
 
 export const VERIFACT_ABI = [
-  {
-    inputs: [],
-    stateMutability: "nonpayable",
-    type: "constructor",
-  },
+  { inputs: [], stateMutability: "nonpayable", type: "constructor" },
   {
     anonymous: false,
     inputs: [
@@ -24,6 +21,27 @@ export const VERIFACT_ABI = [
       },
     ],
     name: "AdminChanged",
+    type: "event",
+  },
+  {
+    anonymous: false,
+    inputs: [
+      {
+        indexed: true,
+        internalType: "uint256",
+        name: "productId",
+        type: "uint256",
+      },
+      { indexed: true, internalType: "address", name: "from", type: "address" },
+      { indexed: true, internalType: "address", name: "to", type: "address" },
+      {
+        indexed: false,
+        internalType: "uint256",
+        name: "timestamp",
+        type: "uint256",
+      },
+    ],
+    name: "EmergencyTransferred",
     type: "event",
   },
   {
@@ -66,18 +84,8 @@ export const VERIFACT_ABI = [
         name: "productId",
         type: "uint256",
       },
-      {
-        indexed: true,
-        internalType: "address",
-        name: "from",
-        type: "address",
-      },
-      {
-        indexed: true,
-        internalType: "address",
-        name: "to",
-        type: "address",
-      },
+      { indexed: true, internalType: "address", name: "from", type: "address" },
+      { indexed: true, internalType: "address", name: "to", type: "address" },
       {
         indexed: false,
         internalType: "uint256",
@@ -89,59 +97,112 @@ export const VERIFACT_ABI = [
     type: "event",
   },
   {
-    inputs: [],
-    name: "admin",
-    outputs: [
+    anonymous: false,
+    inputs: [
       {
+        indexed: true,
         internalType: "address",
-        name: "",
+        name: "seller",
         type: "address",
       },
+      {
+        indexed: false,
+        internalType: "uint256",
+        name: "timestamp",
+        type: "uint256",
+      },
     ],
+    name: "SellerRegistered",
+    type: "event",
+  },
+  {
+    anonymous: false,
+    inputs: [
+      {
+        indexed: true,
+        internalType: "address",
+        name: "seller",
+        type: "address",
+      },
+      {
+        indexed: false,
+        internalType: "uint256",
+        name: "timestamp",
+        type: "uint256",
+      },
+    ],
+    name: "SellerRemoved",
+    type: "event",
+  },
+  {
+    anonymous: false,
+    inputs: [
+      {
+        indexed: true,
+        internalType: "uint256",
+        name: "productId",
+        type: "uint256",
+      },
+      {
+        indexed: true,
+        internalType: "address",
+        name: "successor",
+        type: "address",
+      },
+      {
+        indexed: false,
+        internalType: "uint256",
+        name: "timestamp",
+        type: "uint256",
+      },
+    ],
+    name: "SuccessorDesignated",
+    type: "event",
+  },
+  {
+    inputs: [],
+    name: "admin",
+    outputs: [{ internalType: "address", name: "", type: "address" }],
     stateMutability: "view",
     type: "function",
   },
   {
     inputs: [
-      {
-        internalType: "uint256",
-        name: "productId",
-        type: "uint256",
-      },
+      { internalType: "uint256", name: "productId", type: "uint256" },
+      { internalType: "address", name: "successor", type: "address" },
+      { internalType: "uint256", name: "price", type: "uint256" },
     ],
+    name: "approveSuccession",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function",
+  },
+  {
+    inputs: [
+      { internalType: "uint256", name: "productId", type: "uint256" },
+      { internalType: "address", name: "successor", type: "address" },
+    ],
+    name: "emergencyTransfer",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function",
+  },
+  {
+    inputs: [{ internalType: "uint256", name: "productId", type: "uint256" }],
     name: "getProduct",
     outputs: [
       {
         components: [
-          {
-            internalType: "uint256",
-            name: "productId",
-            type: "uint256",
-          },
-          {
-            internalType: "string",
-            name: "details",
-            type: "string",
-          },
-          {
-            internalType: "uint256",
-            name: "initialPrice",
-            type: "uint256",
-          },
+          { internalType: "uint256", name: "productId", type: "uint256" },
+          { internalType: "string", name: "details", type: "string" },
+          { internalType: "uint256", name: "initialPrice", type: "uint256" },
+          { internalType: "address", name: "currentOwner", type: "address" },
+          { internalType: "uint256", name: "createdAt", type: "uint256" },
+          { internalType: "bool", name: "isActive", type: "bool" },
           {
             internalType: "address",
-            name: "currentOwner",
+            name: "designatedSuccessor",
             type: "address",
-          },
-          {
-            internalType: "uint256",
-            name: "createdAt",
-            type: "uint256",
-          },
-          {
-            internalType: "bool",
-            name: "isActive",
-            type: "bool",
           },
         ],
         internalType: "struct VeriFact.Product",
@@ -153,56 +214,57 @@ export const VERIFACT_ABI = [
     type: "function",
   },
   {
-    inputs: [
-      {
-        internalType: "address",
-        name: "owner",
-        type: "address",
-      },
-    ],
+    inputs: [{ internalType: "address", name: "owner", type: "address" }],
     name: "getProductsByOwner",
+    outputs: [{ internalType: "uint256[]", name: "", type: "uint256[]" }],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [{ internalType: "address", name: "seller", type: "address" }],
+    name: "getProductsRegisteredBySeller",
+    outputs: [{ internalType: "uint256[]", name: "", type: "uint256[]" }],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [
+      { internalType: "address", name: "sellerAddress", type: "address" },
+    ],
+    name: "getSellerInfo",
     outputs: [
       {
-        internalType: "uint256[]",
+        components: [
+          { internalType: "address", name: "sellerAddress", type: "address" },
+          { internalType: "string", name: "storeName", type: "string" },
+          { internalType: "uint256", name: "registeredAt", type: "uint256" },
+          { internalType: "bool", name: "isActive", type: "bool" },
+        ],
+        internalType: "struct VeriFact.Seller",
         name: "",
-        type: "uint256[]",
+        type: "tuple",
       },
     ],
     stateMutability: "view",
     type: "function",
   },
   {
-    inputs: [
-      {
-        internalType: "uint256",
-        name: "productId",
-        type: "uint256",
-      },
-    ],
+    inputs: [{ internalType: "uint256", name: "productId", type: "uint256" }],
+    name: "getSuccessionRequests",
+    outputs: [{ internalType: "address[]", name: "", type: "address[]" }],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [{ internalType: "uint256", name: "productId", type: "uint256" }],
     name: "getTransferHistory",
     outputs: [
       {
         components: [
-          {
-            internalType: "address",
-            name: "from",
-            type: "address",
-          },
-          {
-            internalType: "address",
-            name: "to",
-            type: "address",
-          },
-          {
-            internalType: "uint256",
-            name: "price",
-            type: "uint256",
-          },
-          {
-            internalType: "uint256",
-            name: "timestamp",
-            type: "uint256",
-          },
+          { internalType: "address", name: "from", type: "address" },
+          { internalType: "address", name: "to", type: "address" },
+          { internalType: "uint256", name: "price", type: "uint256" },
+          { internalType: "uint256", name: "timestamp", type: "uint256" },
         ],
         internalType: "struct VeriFact.TransferRecord[]",
         name: "",
@@ -213,85 +275,74 @@ export const VERIFACT_ABI = [
     type: "function",
   },
   {
-    inputs: [
-      {
-        internalType: "uint256",
-        name: "",
-        type: "uint256",
-      },
-    ],
+    inputs: [{ internalType: "address", name: "_address", type: "address" }],
+    name: "isSeller",
+    outputs: [{ internalType: "bool", name: "", type: "bool" }],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [{ internalType: "uint256", name: "", type: "uint256" }],
     name: "products",
     outputs: [
-      {
-        internalType: "uint256",
-        name: "productId",
-        type: "uint256",
-      },
-      {
-        internalType: "string",
-        name: "details",
-        type: "string",
-      },
-      {
-        internalType: "uint256",
-        name: "initialPrice",
-        type: "uint256",
-      },
-      {
-        internalType: "address",
-        name: "currentOwner",
-        type: "address",
-      },
-      {
-        internalType: "uint256",
-        name: "createdAt",
-        type: "uint256",
-      },
-      {
-        internalType: "bool",
-        name: "isActive",
-        type: "bool",
-      },
+      { internalType: "uint256", name: "productId", type: "uint256" },
+      { internalType: "string", name: "details", type: "string" },
+      { internalType: "uint256", name: "initialPrice", type: "uint256" },
+      { internalType: "address", name: "currentOwner", type: "address" },
+      { internalType: "uint256", name: "createdAt", type: "uint256" },
+      { internalType: "bool", name: "isActive", type: "bool" },
+      { internalType: "address", name: "designatedSuccessor", type: "address" },
+    ],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [{ internalType: "string", name: "storeName", type: "string" }],
+    name: "registerAsSeller",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function",
+  },
+  {
+    inputs: [
+      { internalType: "string", name: "details", type: "string" },
+      { internalType: "uint256", name: "initialPrice", type: "uint256" },
+    ],
+    name: "registerProduct",
+    outputs: [{ internalType: "uint256", name: "", type: "uint256" }],
+    stateMutability: "nonpayable",
+    type: "function",
+  },
+  {
+    inputs: [{ internalType: "uint256", name: "productId", type: "uint256" }],
+    name: "removeSuccessor",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function",
+  },
+  {
+    inputs: [{ internalType: "uint256", name: "productId", type: "uint256" }],
+    name: "requestSuccession",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function",
+  },
+  {
+    inputs: [{ internalType: "address", name: "", type: "address" }],
+    name: "sellers",
+    outputs: [
+      { internalType: "address", name: "sellerAddress", type: "address" },
+      { internalType: "string", name: "storeName", type: "string" },
+      { internalType: "uint256", name: "registeredAt", type: "uint256" },
+      { internalType: "bool", name: "isActive", type: "bool" },
     ],
     stateMutability: "view",
     type: "function",
   },
   {
     inputs: [
-      {
-        internalType: "string",
-        name: "details",
-        type: "string",
-      },
-      {
-        internalType: "uint256",
-        name: "initialPrice",
-        type: "uint256",
-      },
-    ],
-    name: "registerProduct",
-    outputs: [
-      {
-        internalType: "uint256",
-        name: "",
-        type: "uint256",
-      },
-    ],
-    stateMutability: "nonpayable",
-    type: "function",
-  },
-  {
-    inputs: [
-      {
-        internalType: "uint256",
-        name: "productId",
-        type: "uint256",
-      },
-      {
-        internalType: "bool",
-        name: "isActive",
-        type: "bool",
-      },
+      { internalType: "uint256", name: "productId", type: "uint256" },
+      { internalType: "bool", name: "isActive", type: "bool" },
     ],
     name: "setProductStatus",
     outputs: [],
@@ -300,12 +351,26 @@ export const VERIFACT_ABI = [
   },
   {
     inputs: [
-      {
-        internalType: "address",
-        name: "newAdmin",
-        type: "address",
-      },
+      { internalType: "address", name: "sellerAddress", type: "address" },
+      { internalType: "bool", name: "isActive", type: "bool" },
     ],
+    name: "setSellerStatus",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function",
+  },
+  {
+    inputs: [
+      { internalType: "uint256", name: "productId", type: "uint256" },
+      { internalType: "address", name: "successor", type: "address" },
+    ],
+    name: "setSuccessor",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function",
+  },
+  {
+    inputs: [{ internalType: "address", name: "newAdmin", type: "address" }],
     name: "transferAdmin",
     outputs: [],
     stateMutability: "nonpayable",
@@ -313,21 +378,9 @@ export const VERIFACT_ABI = [
   },
   {
     inputs: [
-      {
-        internalType: "uint256",
-        name: "productId",
-        type: "uint256",
-      },
-      {
-        internalType: "address",
-        name: "newOwner",
-        type: "address",
-      },
-      {
-        internalType: "uint256",
-        name: "price",
-        type: "uint256",
-      },
+      { internalType: "uint256", name: "productId", type: "uint256" },
+      { internalType: "address", name: "newOwner", type: "address" },
+      { internalType: "uint256", name: "price", type: "uint256" },
     ],
     name: "transferProduct",
     outputs: [],
@@ -335,30 +388,27 @@ export const VERIFACT_ABI = [
     type: "function",
   },
   {
-    inputs: [
-      {
-        internalType: "uint256",
-        name: "productId",
-        type: "uint256",
-      },
-    ],
+    inputs: [],
+    name: "unregisterAsSeller",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function",
+  },
+  {
+    inputs: [{ internalType: "string", name: "newStoreName", type: "string" }],
+    name: "updateStoreName",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function",
+  },
+  {
+    inputs: [{ internalType: "uint256", name: "productId", type: "uint256" }],
     name: "verifyProduct",
     outputs: [
-      {
-        internalType: "bool",
-        name: "exists",
-        type: "bool",
-      },
-      {
-        internalType: "bool",
-        name: "isActive",
-        type: "bool",
-      },
-      {
-        internalType: "address",
-        name: "owner",
-        type: "address",
-      },
+      { internalType: "bool", name: "exists", type: "bool" },
+      { internalType: "bool", name: "isActive", type: "bool" },
+      { internalType: "address", name: "owner", type: "address" },
+      { internalType: "address", name: "successor", type: "address" },
     ],
     stateMutability: "view",
     type: "function",

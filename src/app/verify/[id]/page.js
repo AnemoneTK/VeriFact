@@ -107,6 +107,19 @@ export default function VerifyResultPage({ params }) {
         setVerificationStatus("error");
         setIsLoading(false);
       }
+      if (transferHistory.length > 0) {
+        const originalSellerAddress = transferHistory[0].to;
+
+        try {
+          const sellerInfo = await verifactContract.methods
+            .getSellerInfo(originalSellerAddress)
+            .call();
+
+          setOriginalSeller(sellerInfo);
+        } catch (error) {
+          console.log("Original seller might not be registered anymore");
+        }
+      }
     };
 
     fetchProductData();

@@ -367,6 +367,27 @@ export function Web3Provider({ children }) {
     }
   }, []);
 
+  const findProductBySerialNumber = useCallback(
+    async (serialNumber) => {
+      if (!verifactContract) return null;
+      try {
+        // เรียกใช้เมธอดใหม่จาก Smart Contract
+        const productId = await verifactContract.methods
+          .findProductBySerialNumber(serialNumber)
+          .call();
+
+        if (productId) {
+          return await verifactContract.methods.getProduct(productId).call();
+        }
+        return null;
+      } catch (error) {
+        console.error("Error finding product by serial number:", error);
+        return null;
+      }
+    },
+    [verifactContract]
+  );
+
   // ฟังก์ชันสำหรับเรียกข้อมูลจาก contract
   const callContractMethod = useCallback(
     async (methodName, ...args) => {
@@ -397,17 +418,19 @@ export function Web3Provider({ children }) {
 
   // ฟังก์ชันลงทะเบียนสินค้า
   const registerProduct = useCallback(
-    async (details, initialPrice) => {
+    async (productId, details, initialPrice) => {
       if (!verifactContract || !account) return null;
       try {
-        const result = await verifactContract.registerProduct(
+        // เปลี่ยนเป็นการเรียกใช้แบบตรง
+        const tx = await verifactContract.registerProduct(
+          productId,
           details,
           initialPrice
         );
-        if (result.wait) {
-          await result.wait(); // ethers.js v6
-        }
-        return result;
+
+        // รอการ confirm transaction
+        const receipt = await tx.wait();
+        return receipt;
       } catch (error) {
         console.error("Error registering product:", error);
         throw error;
@@ -467,9 +490,41 @@ export function Web3Provider({ children }) {
   // ฟังก์ชันดึงสินค้าของเจ้าของ
   const getProductsByOwner = useCallback(
     async (owner) => {
-      return callContractMethod("getProductsByOwner", owner || account);
+      if (!verifactContract) return [];
+      try {
+        const productIds = await verifactContract.getProductsByOwner(
+          owner || account
+        );
+
+        // แปลงข้อมูลสินค้า
+        const products = await Promise.all(
+          productIds.map(async (id) => {
+            try {
+              const product = await verifactContract.getProduct(id);
+              return {
+                productId: product[0],
+                details: product[1],
+                initialPrice: product[2].toString(),
+                currentOwner: product[3],
+                createdAt: product[4].toString(),
+                isActive: product[5],
+                designatedSuccessor: product[6],
+              };
+            } catch (err) {
+              console.error(`Error fetching product ${id}:`, err);
+              return null;
+            }
+          })
+        );
+
+        // กรองออกสินค้าที่เป็น null
+        return products.filter((product) => product !== null);
+      } catch (error) {
+        console.error("Error fetching products by owner:", error);
+        return [];
+      }
     },
-    [callContractMethod, account]
+    [verifactContract, account]
   );
 
   // ฟังก์ชันดึงประวัติการโอน
@@ -497,18 +552,15 @@ export function Web3Provider({ children }) {
   const createContractMethodsCompatibility = useCallback(() => {
     if (!verifactContract) return {};
 
-    // สร้างออบเจกต์ methods ที่มีเมธอดแบบเดียวกับ web3.js
     const methods = {};
 
-    // เพิ่มเมธอดทุกตัวใน ABI
     VERIFACT_ABI.forEach((item) => {
       if (item.type === "function") {
         const methodName = item.name;
 
-        // สร้างเมธอดที่เรียกใช้ contract
         methods[methodName] = (...args) => {
-          // สร้างออบเจกต์ที่มีเมธอด call และ send เหมือน web3.js
           return {
+            // เพิ่ม async เพื่อรองรับ Promise
             call: async (options = {}) => {
               try {
                 return await verifactContract[methodName](...args);
@@ -519,11 +571,15 @@ export function Web3Provider({ children }) {
             },
             send: async (options = {}) => {
               try {
-                const result = await verifactContract[methodName](...args);
-                if (result.wait) {
-                  await result.wait();
+                // ใช้ send จาก contract โดยตรง
+                const tx = await verifactContract[methodName](...args);
+
+                // รอการ confirm transaction
+                if (tx.wait) {
+                  await tx.wait();
                 }
-                return result;
+
+                return tx;
               } catch (error) {
                 console.error(`Error sending ${methodName}:`, error);
                 throw error;
@@ -619,6 +675,7 @@ export function Web3Provider({ children }) {
     setSuccessor,
     requestSuccession,
     approveSuccession,
+    findProductBySerialNumber,
   };
 
   return <Web3Context.Provider value={value}>{children}</Web3Context.Provider>;

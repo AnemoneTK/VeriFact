@@ -30,29 +30,48 @@ export default function TransferForm() {
     }
   }, [initialProductId, isConnected, account, verifactContract]);
 
+  // ปรับการค้นหาสินค้า
   const fetchProductDetails = async (id) => {
     if (!isConnected || !verifactContract) return;
 
     try {
-      const product = await verifactContract.methods.getProduct(id).call();
+      // ตรวจสอบว่าเป็นหมายเลขซีเรียลหรือไม่
+      const isSerialNumber =
+        id.includes("SN-") || /^[A-Z]{2}-\d{4}-\d{4}-\d{4}$/.test(id);
 
-      // ตรวจสอบว่าผู้ใช้ปัจจุบันเป็นเจ้าของสินค้านี้หรือไม่
+      let product;
+      if (isSerialNumber) {
+        // ค้นหาด้วยหมายเลขซีเรียล
+        const productId = await verifactContract.methods
+          .findProductBySerialNumber(id)
+          .call();
+
+        if (!productId) {
+          setError("ไม่พบสินค้าที่มีหมายเลขซีเรียลนี้");
+          return;
+        }
+
+        product = await verifactContract.methods.getProduct(productId).call();
+      } else {
+        // ค้นหาด้วย productId ปกติ
+        product = await verifactContract.methods.getProduct(id).call();
+      }
+
+      // ตรวจสอบว่าผู้ใช้เป็นเจ้าของสินค้านี้หรือไม่
       if (product.currentOwner.toLowerCase() !== account.toLowerCase()) {
         setError("คุณไม่ใช่เจ้าของสินค้านี้ ไม่สามารถโอนได้");
-        setProductDetails(null);
-      } else {
-        setProductDetails(product);
-        setSelectedProduct(id);
-        setProductId(id);
-        setError("");
+        return;
       }
+
+      setProductDetails(product);
+      setSelectedProduct(product.productId);
+      setProductId(product.productId);
+      setError("");
     } catch (err) {
       console.error("Error fetching product details:", err);
       setError("ไม่สามารถดึงข้อมูลสินค้าได้ โปรดลองอีกครั้ง");
-      setProductDetails(null);
     }
   };
-
   const fetchUserProducts = async () => {
     try {
       const productIds = await verifactContract.methods

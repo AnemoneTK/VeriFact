@@ -38,10 +38,56 @@ export default function AddProductPage() {
     }
   };
 
+  const generateProductId = () => {
+    return `PROD-${Date.now()}`;
+  };
+
+  const handleRegisterProduct = async (e) => {
+    e.preventDefault();
+
+    // สร้าง productId อัตโนมัติหากไม่ได้ระบุ
+    const productId = formData.productId || `PROD-${Date.now()}`;
+
+    // รวมรายละเอียดสินค้า
+    const details = `${formData.productName} | ${formData.productModel} | ${formData.serialNumber}`;
+
+    try {
+      const initialPrice = parseInt(formData.initialPrice, 10);
+
+      const result = await verifactContract.registerProduct(
+        productId,
+        details,
+        initialPrice
+      );
+
+      showSuccess(`ลงทะเบียนสินค้าสำเร็จ! รหัสสินค้า: ${productId}`);
+
+      // รีเซ็ตฟอร์ม
+      setFormData({
+        productName: "",
+        productModel: "",
+        serialNumber: "",
+        initialPrice: "",
+      });
+
+      // โหลดข้อมูลใหม่
+      fetchProducts();
+    } catch (error) {
+      console.error("Error registering product:", error);
+      showError(`เกิดข้อผิดพลาดในการลงทะเบียนสินค้า: ${error.message}`);
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    if (!productId || !details || !price) {
+    // เตรียมข้อมูล
+    const productId = formData.productId || `PROD-${Date.now()}`;
+    const details = `${formData.productName} | ${formData.productModel} | ${formData.serialNumber}`;
+    const initialPrice = parseInt(formData.initialPrice, 10);
+
+    // ตรวจสอบข้อมูลเบื้องต้น
+    if (!productId || !details || !initialPrice) {
       setError("กรุณากรอกข้อมูลให้ครบถ้วน");
       return;
     }
@@ -51,53 +97,55 @@ export default function AddProductPage() {
     setSuccess("");
 
     try {
-      // ตรวจสอบว่าผู้ใช้เป็นผู้ผลิตที่ได้รับอนุญาตหรือไม่
-      const isAllowed = await verifactContract.methods
-        .manufacturers(account)
+      // ตรวจสอบสถานะผู้ขาย
+      const isManufacturer = await verifactContract.methods
+        .isSeller(account)
         .call();
 
-      if (!isAllowed) {
+      if (!isManufacturer) {
         throw new Error("คุณไม่ได้รับอนุญาตให้เพิ่มสินค้า");
       }
 
       // ตรวจสอบว่ามีสินค้านี้อยู่แล้วหรือไม่
-      const existingProduct = await verifactContract.methods
-        .getProduct(productId)
-        .call();
-
-      if (
-        existingProduct &&
-        existingProduct.productId &&
-        existingProduct.productId !== ""
-      ) {
+      try {
+        await verifactContract.methods.getProduct(productId).call();
         throw new Error("รหัสสินค้านี้มีอยู่ในระบบแล้ว");
+      } catch (checkError) {
+        // ถ้า getProduct throw error แสดงว่ายังไม่มีสินค้า ให้ดำเนินการต่อ
+        if (!checkError.message.includes("Product does not exist")) {
+          throw checkError;
+        }
       }
 
-      // ดำเนินการเพิ่มสินค้า
-      const receipt = await verifactContract.methods
-        .addProduct(
-          productId,
-          details,
-          price,
-          initialOwner || "0x0000000000000000000000000000000000000000"
-        )
+      // ลงทะเบียนสินค้า
+      const result = await verifactContract.methods
+        .registerProduct(productId, details, initialPrice)
         .send({ from: account });
 
-      setSuccess("เพิ่มสินค้าสำเร็จ!");
+      setSuccess(`เพิ่มสินค้าสำเร็จ! รหัสสินค้า: ${productId}`);
 
       // รีเซ็ตฟอร์ม
-      setProductId("");
-      setDetails("");
-      setPrice("");
-      setInitialOwner("");
+      setFormData({
+        productName: "",
+        productModel: "",
+        serialNumber: "",
+        initialPrice: "",
+        productId: "",
+      });
 
-      // นำทางไปที่หน้ารายการสินค้าหลังจากเพิ่มสำเร็จ
+      // นำทางไปที่หน้ารายการสินค้า
       setTimeout(() => {
         router.push("/seller/products");
       }, 3000);
     } catch (err) {
       console.error("Error adding product:", err);
-      setError(err.message || "เกิดข้อผิดพลาดในการเพิ่มสินค้า โปรดลองอีกครั้ง");
+
+      // จัดการ error message ที่เป็นมิตร
+      const errorMessage = err.message.includes("User denied transaction")
+        ? "คุณยกเลิกการทำธุรกรรม"
+        : err.message || "เกิดข้อผิดพลาดในการเพิ่มสินค้า โปรดลองอีกครั้ง";
+
+      setError(errorMessage);
     } finally {
       setIsLoading(false);
     }

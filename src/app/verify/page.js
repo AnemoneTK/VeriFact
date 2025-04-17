@@ -19,41 +19,93 @@ export default function VerifyPage() {
     e.preventDefault();
 
     if (!productId.trim()) {
-      showError("กรุณากรอกรหัสสินค้า");
+      showError("กรุณากรอกรหัสสินค้าหรือหมายเลขซีเรียล");
       return;
     }
 
     setIsSearching(true);
 
     try {
-      // ถ้ายังไม่ได้เชื่อมต่อกับบล็อกเชน ให้แสดงข้อความแนะนำ
-      if (!isConnected || !verifactContract) {
-        showInfo(
-          "การเชื่อมต่อกระเป๋าเงินจะช่วยให้การตรวจสอบมีประสิทธิภาพมากขึ้น"
-        );
-        // นำทางไปที่หน้าผลลัพธ์โดยไม่ต้องตรวจสอบบนบล็อกเชน
+      // ค้นหาด้วย verifactContract หากเชื่อมต่อแล้ว
+      if (isConnected && verifactContract) {
+        try {
+          // ตรวจสอบด้วย productId ก่อน
+          const result = await verifactContract.methods
+            .verifyProduct(productId)
+            .call();
+
+          if (result.exists) {
+            // ถ้าพบสินค้า ให้นำทางไปยังหน้าผลลัพธ์
+            router.push(`/verify/${productId}`);
+            return;
+          }
+
+          // ถ้าไม่พบสินค้าด้วย productId ให้ลองค้นหาด้วยหมายเลขซีเรียล
+          // ดึงทุกสินค้าและค้นหาจากรายละเอียด
+          const allProducts = await getAllProducts();
+
+          // ค้นหาสินค้าที่มีหมายเลขซีเรียลตรงกับที่ระบุ
+          const matchedProduct = allProducts.find((product) => {
+            const parts = product.details.split("|");
+            if (parts.length >= 3) {
+              const serialNumber = parts[2].trim();
+              return serialNumber === productId.trim();
+            }
+            return false;
+          });
+
+          if (matchedProduct) {
+            // หากพบสินค้าที่มีหมายเลขซีเรียลตรงกัน ให้นำทางไปยังหน้าผลลัพธ์ด้วย productId
+            router.push(`/verify/${matchedProduct.productId}`);
+            return;
+          }
+
+          // ถ้าไม่พบทั้งสองกรณี
+          showError("ไม่พบสินค้านี้ในระบบ");
+          setIsSearching(false);
+        } catch (err) {
+          console.error("Error searching products:", err);
+          showError("เกิดข้อผิดพลาดในการค้นหาสินค้า");
+          setIsSearching(false);
+        }
+      } else {
+        // ถ้าไม่ได้เชื่อมต่อกระเป๋าเงิน ให้นำทางไปยังหน้าผลลัพธ์โดยตรง
+        // (ในกรณีนี้จะต้องมีการค้นหาด้วยหมายเลขซีเรียลในหน้าผลลัพธ์อีกครั้ง)
         router.push(`/verify/${productId}`);
-        return;
       }
-
-      // ตรวจสอบความถูกต้องบนบล็อกเชน
-      const result = await verifactContract.methods
-        .verifyProduct(productId)
-        .call();
-
-      if (!result.exists) {
-        showError("ไม่พบสินค้านี้ในระบบ");
-        setIsSearching(false);
-        return;
-      }
-
-      // นำทางไปที่หน้าแสดงผลการตรวจสอบ
-      router.push(`/verify/${productId}`);
     } catch (err) {
       console.error("Error verifying product:", err);
       showError("เกิดข้อผิดพลาดในการตรวจสอบสินค้า โปรดลองอีกครั้ง");
       setIsSearching(false);
     }
+  };
+
+  const getAllProducts = async () => {
+    // ต้องเพิ่มฟังก์ชันนี้เพื่อดึงสินค้าทั้งหมดจาก Smart Contract
+    // เช่น อาจใช้การลูปค้นหาสินค้าตั้งแต่ ID 1 ไปเรื่อยๆ จนไม่พบสินค้า
+
+    // ตัวอย่าง (ต้องปรับให้เข้ากับ Smart Contract จริง)
+    let products = [];
+    let id = 1;
+    let notFound = 0;
+
+    // ค้นหาจนกว่าจะเจอสินค้าไม่พบติดต่อกัน 5 ครั้ง
+    while (notFound < 5) {
+      try {
+        const product = await verifactContract.methods.getProduct(id).call();
+        if (product && product.details) {
+          products.push(product);
+          notFound = 0; // รีเซ็ตตัวนับเมื่อพบสินค้า
+        } else {
+          notFound++;
+        }
+      } catch (error) {
+        notFound++;
+      }
+      id++;
+    }
+
+    return products;
   };
 
   // แสดงโหมดสแกน QR Code (จำลอง)

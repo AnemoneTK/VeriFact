@@ -33,6 +33,49 @@ export default function VerifyResultPage({ params }) {
     return `${address.slice(0, startLength)}...${address.slice(-endLength)}`;
   };
 
+  const getAllProducts = async () => {
+    if (!verifactContract) return [];
+
+    try {
+      let products = [];
+      let id = 1;
+      let notFound = 0;
+
+      // ค้นหาจนกว่าจะไม่พบสินค้าติดต่อกัน 5 ครั้ง
+      while (notFound < 5) {
+        try {
+          const product = await verifactContract.methods.getProduct(id).call();
+
+          // แปลงข้อมูล
+          const formattedProduct = {
+            productId: product[0]?.toString() || id.toString(),
+            details: product[1] || "ไม่มีรายละเอียด",
+            initialPrice: product[2]?.toString() || "0",
+            currentOwner: product[3] || "ไม่ระบุเจ้าของ",
+            createdAt: product[4]?.toString() || "0",
+            isActive: product[5] || false,
+            designatedSuccessor: product[6] || null,
+          };
+
+          if (formattedProduct && formattedProduct.details) {
+            products.push(formattedProduct);
+            notFound = 0; // รีเซ็ตตัวนับเมื่อพบสินค้า
+          } else {
+            notFound++;
+          }
+        } catch (error) {
+          notFound++;
+        }
+        id++;
+      }
+
+      return products;
+    } catch (error) {
+      console.error("Error fetching all products:", error);
+      return [];
+    }
+  };
+
   useEffect(() => {
     // ฟังก์ชันดึงข้อมูลสินค้า
     const fetchProductData = async () => {
@@ -43,99 +86,211 @@ export default function VerifyResultPage({ params }) {
       }
 
       try {
-        // หากไม่มีการเชื่อมต่อกับ contract ให้แสดงปุ่มเชื่อมต่อ
+        // ตรวจสอบว่าเป็นการค้นหาด้วยหมายเลขซีเรียลหรือไม่
+        const isSerialNumber =
+          productId.includes("SN-") || productId.match(/^\d{4}-\d{4}-\d{4}$/);
+
+        // ถ้าไม่ได้เชื่อมต่อกระเป๋าเงิน จะแสดงคำแนะนำ แต่ยังตรวจสอบได้
         if (!isConnected || !verifactContract) {
           setIsLoading(false);
-          setVerificationStatus("error");
-          showError("กรุณาเชื่อมต่อกระเป๋าเงินเพื่อตรวจสอบสินค้า");
+          setVerificationStatus("warning");
+          // แสดงข้อความแนะนำให้เชื่อมต่อเพื่อข้อมูลที่สมบูรณ์มากขึ้น แต่ไม่บังคับ
           return;
         }
 
-        // ตรวจสอบว่าสินค้ามีอยู่จริงหรือไม่
-        const verifyResult = await verifactContract.methods
-          .verifyProduct(productId)
-          .call();
+        // กรณีค้นหาด้วย productId
+        if (!isSerialNumber) {
+          const verifyResult = await verifactContract.methods
+            .verifyProduct(productId)
+            .call();
 
-        if (!verifyResult.exists) {
-          setIsAuthentic(false);
-          setVerificationStatus("unverified");
-          setIsLoading(false);
-          return;
-        }
-
-        // ดึงข้อมูลสินค้า
-        const product = await verifactContract.methods
-          .getProduct(productId)
-          .call();
-
-        // แปลงข้อมูลที่ได้จาก Smart Contract ให้อยู่ในรูปแบบที่ใช้งานได้
-        const formattedProduct = {
-          productId: product[0]?.toString() || productId,
-          details: product[1] || "ไม่มีรายละเอียด",
-          initialPrice: product[2]?.toString() || "0",
-          currentOwner: product[3] || "ไม่ระบุเจ้าของ",
-          createdAt: product[4]?.toString() || "0",
-          isActive: product[5] || false,
-          designatedSuccessor: product[6] || null,
-        };
-
-        setProductData(formattedProduct);
-
-        // ดึงประวัติการโอน
-        const history = await verifactContract.methods
-          .getTransferHistory(productId)
-          .call();
-
-        // แปลงข้อมูลประวัติการโอนให้อยู่ในรูปแบบที่ใช้งานได้
-        const formattedHistory = history.map((item) => ({
-          from: item[0] || "0x0000000000000000000000000000000000000000",
-          to: item[1] || "ไม่ระบุ",
-          price: item[2]?.toString() || "0",
-          timestamp: item[3]?.toString() || "0",
-        }));
-
-        setTransferHistory(formattedHistory);
-
-        // ดึงข้อมูลผู้ขายดั้งเดิม (original seller)
-        if (formattedHistory.length > 0) {
-          const originalSellerAddress = formattedHistory[0].to;
-
-          try {
-            const sellerInfo = await verifactContract.methods
-              .getSellerInfo(originalSellerAddress)
-              .call();
-
-            setOriginalSeller(sellerInfo);
-            if (isConnected && verifactContract && productData) {
-              try {
-                const requests = await verifactContract.methods
-                  .getSuccessionRequests(productId)
-                  .call();
-
-                setSuccessorRequests(requests);
-              } catch (requestError) {
-                console.error(
-                  "Error fetching succession requests:",
-                  requestError
-                );
-              }
-            }
-          } catch (error) {
-            console.log("Original seller might not be registered anymore");
+          if (!verifyResult.exists) {
+            setIsAuthentic(false);
+            setVerificationStatus("unverified");
+            setIsLoading(false);
+            return;
           }
+
+          // ดึงข้อมูลสินค้า
+          const product = await verifactContract.methods
+            .getProduct(productId)
+            .call();
+
+          // แปลงข้อมูลที่ได้จาก Smart Contract
+          const formattedProduct = {
+            productId: product[0]?.toString() || productId,
+            details: product[1] || "ไม่มีรายละเอียด",
+            initialPrice: product[2]?.toString() || "0",
+            currentOwner: product[3] || "ไม่ระบุเจ้าของ",
+            createdAt: product[4]?.toString() || "0",
+            isActive: product[5] || false,
+            designatedSuccessor: product[6] || null,
+          };
+
+          setProductData(formattedProduct);
+
+          // ดึงประวัติการโอน
+          const history = await verifactContract.methods
+            .getTransferHistory(productId)
+            .call();
+
+          // แปลงข้อมูลประวัติการโอน
+          const formattedHistory = history.map((item) => ({
+            from: item[0] || "0x0000000000000000000000000000000000000000",
+            to: item[1] || "ไม่ระบุ",
+            price: item[2]?.toString() || "0",
+            timestamp: item[3]?.toString() || "0",
+          }));
+
+          setTransferHistory(formattedHistory);
+
+          // ดึงข้อมูลผู้ขายดั้งเดิม
+          if (formattedHistory.length > 0) {
+            const originalSellerAddress = formattedHistory[0].to;
+
+            try {
+              const sellerInfo = await verifactContract.methods
+                .getSellerInfo(originalSellerAddress)
+                .call();
+
+              setOriginalSeller(sellerInfo);
+
+              // ดึงคำขอรับสืบทอด
+              if (isConnected && verifactContract && productData) {
+                try {
+                  const requests = await verifactContract.methods
+                    .getSuccessionRequests(productId)
+                    .call();
+
+                  setSuccessorRequests(requests);
+                } catch (requestError) {
+                  console.error(
+                    "Error fetching succession requests:",
+                    requestError
+                  );
+                }
+              }
+            } catch (error) {
+              console.log("Original seller might not be registered anymore");
+            }
+          }
+
+          setIsAuthentic(formattedProduct.isActive);
+          setVerificationStatus(
+            formattedProduct.isActive ? "verified" : "unverified"
+          );
+          setIsLoading(false);
         }
+        // กรณีค้นหาด้วยหมายเลขซีเรียล
+        else {
+          // ค้นหาสินค้าทั้งหมดและกรองด้วยหมายเลขซีเรียล
+          let allProducts = [];
+          let id = 1;
+          let notFound = 0;
+          let matchedProduct = null;
 
-        // ตรวจสอบว่าเป็นสินค้าใหม่ที่ยังไม่มีการขายต่อหรือไม่
-        const isNewProduct =
-          formattedHistory.length === 1 &&
-          formattedHistory[0].from ===
-            "0x0000000000000000000000000000000000000000";
+          // ค้นหาจนกว่าจะเจอสินค้าที่ตรงกับหมายเลขซีเรียลหรือไม่พบสินค้าติดต่อกัน 5 ครั้ง
+          while (notFound < 5 && !matchedProduct) {
+            try {
+              const product = await verifactContract.methods
+                .getProduct(id)
+                .call();
 
-        setIsAuthentic(formattedProduct.isActive);
-        setVerificationStatus(
-          formattedProduct.isActive ? "verified" : "unverified"
-        );
-        setIsLoading(false);
+              if (product && product[1]) {
+                // ตรวจสอบว่ามีรายละเอียดหรือไม่
+                const formattedProduct = {
+                  productId: product[0]?.toString() || id.toString(),
+                  details: product[1] || "ไม่มีรายละเอียด",
+                  initialPrice: product[2]?.toString() || "0",
+                  currentOwner: product[3] || "ไม่ระบุเจ้าของ",
+                  createdAt: product[4]?.toString() || "0",
+                  isActive: product[5] || false,
+                  designatedSuccessor: product[6] || null,
+                };
+
+                // ตรวจสอบว่าตรงกับหมายเลขซีเรียลหรือไม่
+                const parts = formattedProduct.details.split("|");
+                if (parts.length >= 3) {
+                  const serialNumber = parts[2].trim();
+                  if (serialNumber === productId.trim()) {
+                    matchedProduct = formattedProduct;
+                    break;
+                  }
+                }
+
+                allProducts.push(formattedProduct);
+                notFound = 0; // รีเซ็ตตัวนับเมื่อพบสินค้า
+              } else {
+                notFound++;
+              }
+            } catch (error) {
+              notFound++;
+            }
+            id++;
+          }
+
+          if (!matchedProduct) {
+            setIsAuthentic(false);
+            setVerificationStatus("unverified");
+            setIsLoading(false);
+            return;
+          }
+
+          // ใช้ข้อมูลสินค้าที่พบ
+          setProductData(matchedProduct);
+
+          // ดึงประวัติการโอน
+          const history = await verifactContract.methods
+            .getTransferHistory(matchedProduct.productId)
+            .call();
+
+          // แปลงข้อมูลประวัติการโอน
+          const formattedHistory = history.map((item) => ({
+            from: item[0] || "0x0000000000000000000000000000000000000000",
+            to: item[1] || "ไม่ระบุ",
+            price: item[2]?.toString() || "0",
+            timestamp: item[3]?.toString() || "0",
+          }));
+
+          setTransferHistory(formattedHistory);
+
+          // ดึงข้อมูลผู้ขายดั้งเดิม
+          if (formattedHistory.length > 0) {
+            const originalSellerAddress = formattedHistory[0].to;
+
+            try {
+              const sellerInfo = await verifactContract.methods
+                .getSellerInfo(originalSellerAddress)
+                .call();
+
+              setOriginalSeller(sellerInfo);
+
+              // ดึงคำขอรับสืบทอด
+              if (isConnected && verifactContract) {
+                try {
+                  const requests = await verifactContract.methods
+                    .getSuccessionRequests(matchedProduct.productId)
+                    .call();
+
+                  setSuccessorRequests(requests);
+                } catch (requestError) {
+                  console.error(
+                    "Error fetching succession requests:",
+                    requestError
+                  );
+                }
+              }
+            } catch (error) {
+              console.log("Original seller might not be registered anymore");
+            }
+          }
+
+          setIsAuthentic(matchedProduct.isActive);
+          setVerificationStatus(
+            matchedProduct.isActive ? "verified" : "unverified"
+          );
+          setIsLoading(false);
+        }
       } catch (error) {
         console.error("Error fetching product data:", error);
         showError("ไม่สามารถดึงข้อมูลสินค้าได้ โปรดลองอีกครั้ง");
@@ -442,6 +597,7 @@ export default function VerifyResultPage({ params }) {
                 <div className="mb-8">{renderVerificationStatus()}</div>
 
                 {/* ข้อมูลสินค้า */}
+                {/* ข้อมูลสินค้า - แก้ไขส่วนที่แสดงรายละเอียด */}
                 {productData && (
                   <div className="mb-8">
                     <h3 className="text-lg font-medium text-gray-900 mb-4">
@@ -457,6 +613,38 @@ export default function VerifyResultPage({ params }) {
                             {productData.productId}
                           </dd>
                         </div>
+
+                        {/* แยกแสดงชื่อสินค้า รุ่น และหมายเลขซีเรียล */}
+                        {productData.details &&
+                          productData.details.split("|").length >= 3 && (
+                            <>
+                              <div>
+                                <dt className="text-sm font-medium text-gray-500">
+                                  ชื่อสินค้า
+                                </dt>
+                                <dd className="mt-1 text-sm text-gray-900">
+                                  {productData.details.split("|")[0].trim()}
+                                </dd>
+                              </div>
+                              <div>
+                                <dt className="text-sm font-medium text-gray-500">
+                                  รุ่น
+                                </dt>
+                                <dd className="mt-1 text-sm text-gray-900">
+                                  {productData.details.split("|")[1].trim()}
+                                </dd>
+                              </div>
+                              <div className="bg-yellow-50 p-2 rounded-md border border-yellow-200 md:col-span-2">
+                                <dt className="text-sm font-medium text-gray-700">
+                                  หมายเลขซีเรียล
+                                </dt>
+                                <dd className="mt-1 text-sm font-mono text-gray-900 font-semibold">
+                                  {productData.details.split("|")[2].trim()}
+                                </dd>
+                              </div>
+                            </>
+                          )}
+
                         <div>
                           <dt className="text-sm font-medium text-gray-500">
                             เจ้าของปัจจุบัน
@@ -493,14 +681,6 @@ export default function VerifyResultPage({ params }) {
                               : transferHistory.length > 0
                               ? truncateAddress(transferHistory[0].to, 8, 6)
                               : "ไม่ทราบผู้ลงทะเบียน"}
-                          </dd>
-                        </div>
-                        <div className="md:col-span-2">
-                          <dt className="text-sm font-medium text-gray-500">
-                            รายละเอียด
-                          </dt>
-                          <dd className="mt-1 text-sm text-gray-900">
-                            {productData.details}
                           </dd>
                         </div>
                         {productData.designatedSuccessor && (

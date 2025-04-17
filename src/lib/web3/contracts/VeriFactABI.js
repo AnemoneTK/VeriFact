@@ -1,6 +1,7 @@
 export const VERIFACT_CONTRACT_ADDRESS =
   // "0x0fd6af5B26fF90261f8aBfae120086d99463D5d2";
-  "0x7E40f881b5D3eD299215DcD2BEa032dB6113E105";
+  // "0x7E40f881b5D3eD299215DcD2BEa032dB6113E105";
+  "0x4F79E18fDdb5972E0C95346b4B3Fc8908544C390";
 
 export const VERIFACT_ABI = [
   { inputs: [], stateMutability: "nonpayable", type: "constructor" },
@@ -28,9 +29,9 @@ export const VERIFACT_ABI = [
     inputs: [
       {
         indexed: true,
-        internalType: "uint256",
+        internalType: "string",
         name: "productId",
-        type: "uint256",
+        type: "string",
       },
       { indexed: true, internalType: "address", name: "from", type: "address" },
       { indexed: true, internalType: "address", name: "to", type: "address" },
@@ -49,9 +50,9 @@ export const VERIFACT_ABI = [
     inputs: [
       {
         indexed: true,
-        internalType: "uint256",
+        internalType: "string",
         name: "productId",
-        type: "uint256",
+        type: "string",
       },
       {
         indexed: true,
@@ -80,9 +81,9 @@ export const VERIFACT_ABI = [
     inputs: [
       {
         indexed: true,
-        internalType: "uint256",
+        internalType: "string",
         name: "productId",
-        type: "uint256",
+        type: "string",
       },
       { indexed: true, internalType: "address", name: "from", type: "address" },
       { indexed: true, internalType: "address", name: "to", type: "address" },
@@ -139,9 +140,9 @@ export const VERIFACT_ABI = [
     inputs: [
       {
         indexed: true,
-        internalType: "uint256",
+        internalType: "string",
         name: "productId",
-        type: "uint256",
+        type: "string",
       },
       {
         indexed: true,
@@ -168,7 +169,7 @@ export const VERIFACT_ABI = [
   },
   {
     inputs: [
-      { internalType: "uint256", name: "productId", type: "uint256" },
+      { internalType: "string", name: "productId", type: "string" },
       { internalType: "address", name: "successor", type: "address" },
       { internalType: "uint256", name: "price", type: "uint256" },
     ],
@@ -179,7 +180,7 @@ export const VERIFACT_ABI = [
   },
   {
     inputs: [
-      { internalType: "uint256", name: "productId", type: "uint256" },
+      { internalType: "string", name: "productId", type: "string" },
       { internalType: "address", name: "successor", type: "address" },
     ],
     name: "emergencyTransfer",
@@ -188,12 +189,26 @@ export const VERIFACT_ABI = [
     type: "function",
   },
   {
-    inputs: [{ internalType: "uint256", name: "productId", type: "uint256" }],
+    inputs: [{ internalType: "string", name: "serialNumber", type: "string" }],
+    name: "findProductBySerialNumber",
+    outputs: [{ internalType: "string", name: "", type: "string" }],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [],
+    name: "getAllProductIds",
+    outputs: [{ internalType: "string[]", name: "", type: "string[]" }],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [{ internalType: "string", name: "productId", type: "string" }],
     name: "getProduct",
     outputs: [
       {
         components: [
-          { internalType: "uint256", name: "productId", type: "uint256" },
+          { internalType: "string", name: "productId", type: "string" },
           { internalType: "string", name: "details", type: "string" },
           { internalType: "uint256", name: "initialPrice", type: "uint256" },
           { internalType: "address", name: "currentOwner", type: "address" },
@@ -216,14 +231,14 @@ export const VERIFACT_ABI = [
   {
     inputs: [{ internalType: "address", name: "owner", type: "address" }],
     name: "getProductsByOwner",
-    outputs: [{ internalType: "uint256[]", name: "", type: "uint256[]" }],
+    outputs: [{ internalType: "string[]", name: "", type: "string[]" }],
     stateMutability: "view",
     type: "function",
   },
   {
     inputs: [{ internalType: "address", name: "seller", type: "address" }],
     name: "getProductsRegisteredBySeller",
-    outputs: [{ internalType: "uint256[]", name: "", type: "uint256[]" }],
+    outputs: [{ internalType: "string[]", name: "", type: "string[]" }],
     stateMutability: "view",
     type: "function",
   },
@@ -249,14 +264,14 @@ export const VERIFACT_ABI = [
     type: "function",
   },
   {
-    inputs: [{ internalType: "uint256", name: "productId", type: "uint256" }],
+    inputs: [{ internalType: "string", name: "productId", type: "string" }],
     name: "getSuccessionRequests",
     outputs: [{ internalType: "address[]", name: "", type: "address[]" }],
     stateMutability: "view",
     type: "function",
   },
   {
-    inputs: [{ internalType: "uint256", name: "productId", type: "uint256" }],
+    inputs: [{ internalType: "string", name: "productId", type: "string" }],
     name: "getTransferHistory",
     outputs: [
       {
@@ -282,10 +297,10 @@ export const VERIFACT_ABI = [
     type: "function",
   },
   {
-    inputs: [{ internalType: "uint256", name: "", type: "uint256" }],
+    inputs: [{ internalType: "string", name: "", type: "string" }],
     name: "products",
     outputs: [
-      { internalType: "uint256", name: "productId", type: "uint256" },
+      { internalType: "string", name: "productId", type: "string" },
       { internalType: "string", name: "details", type: "string" },
       { internalType: "uint256", name: "initialPrice", type: "uint256" },
       { internalType: "address", name: "currentOwner", type: "address" },
@@ -305,23 +320,24 @@ export const VERIFACT_ABI = [
   },
   {
     inputs: [
+      { internalType: "string", name: "productId", type: "string" },
       { internalType: "string", name: "details", type: "string" },
       { internalType: "uint256", name: "initialPrice", type: "uint256" },
     ],
     name: "registerProduct",
-    outputs: [{ internalType: "uint256", name: "", type: "uint256" }],
+    outputs: [],
     stateMutability: "nonpayable",
     type: "function",
   },
   {
-    inputs: [{ internalType: "uint256", name: "productId", type: "uint256" }],
+    inputs: [{ internalType: "string", name: "productId", type: "string" }],
     name: "removeSuccessor",
     outputs: [],
     stateMutability: "nonpayable",
     type: "function",
   },
   {
-    inputs: [{ internalType: "uint256", name: "productId", type: "uint256" }],
+    inputs: [{ internalType: "string", name: "productId", type: "string" }],
     name: "requestSuccession",
     outputs: [],
     stateMutability: "nonpayable",
@@ -341,7 +357,7 @@ export const VERIFACT_ABI = [
   },
   {
     inputs: [
-      { internalType: "uint256", name: "productId", type: "uint256" },
+      { internalType: "string", name: "productId", type: "string" },
       { internalType: "bool", name: "isActive", type: "bool" },
     ],
     name: "setProductStatus",
@@ -361,7 +377,7 @@ export const VERIFACT_ABI = [
   },
   {
     inputs: [
-      { internalType: "uint256", name: "productId", type: "uint256" },
+      { internalType: "string", name: "productId", type: "string" },
       { internalType: "address", name: "successor", type: "address" },
     ],
     name: "setSuccessor",
@@ -378,7 +394,7 @@ export const VERIFACT_ABI = [
   },
   {
     inputs: [
-      { internalType: "uint256", name: "productId", type: "uint256" },
+      { internalType: "string", name: "productId", type: "string" },
       { internalType: "address", name: "newOwner", type: "address" },
       { internalType: "uint256", name: "price", type: "uint256" },
     ],
@@ -402,7 +418,7 @@ export const VERIFACT_ABI = [
     type: "function",
   },
   {
-    inputs: [{ internalType: "uint256", name: "productId", type: "uint256" }],
+    inputs: [{ internalType: "string", name: "productId", type: "string" }],
     name: "verifyProduct",
     outputs: [
       { internalType: "bool", name: "exists", type: "bool" },

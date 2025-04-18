@@ -135,10 +135,13 @@ export default function TransferForm() {
         throw new Error("คุณไม่ใช่เจ้าของสินค้านี้ ไม่สามารถโอนได้");
       }
 
+      // แปลง price เป็นตัวเลข
+      const priceValue = parseInt(price, 10);
+
       // ดำเนินการโอนสินค้า
       await verifactContract.methods
-        .transferProduct(productId, receiverAddress, price)
-        .send({ from: account });
+        .transferProduct(productId, receiverAddress, priceValue)
+        .send();
 
       setSuccess("โอนสินค้าสำเร็จ!");
       setReceiverAddress("");

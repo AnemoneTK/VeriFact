@@ -136,38 +136,31 @@ export default function SellerDashboard() {
   const handleRegisterProduct = async (e) => {
     e.preventDefault();
 
+    // สร้าง productId อัตโนมัติ
+    const productId = `PROD-${Date.now()}`;
+
+    // รวมรายละเอียดสินค้า
     const details = `${formData.productName} | ${formData.productModel} | ${formData.serialNumber}`;
 
     try {
+      setIsLoading(true);
+
+      // แปลงค่า initialPrice เป็นตัวเลข (ไม่ใช่ string)
       const initialPrice = parseInt(formData.initialPrice, 10);
+
+      // เรียกใช้ฟังก์ชันด้วยพารามิเตอร์ครบทั้ง 3 ตัว
       const result = await verifactContract.methods
-        .registerProduct(details, initialPrice)
-        .send({ from: account });
+        .registerProduct(
+          productId, // พารามิเตอร์ที่ 1: productId
+          details, // พารามิเตอร์ที่ 2: details
+          initialPrice // พารามิเตอร์ที่ 3: initialPrice
+        )
+        .send();
 
       console.log("Transaction result:", result);
+      showSuccess(`ลงทะเบียนสินค้าสำเร็จ! รหัสสินค้า: ${productId}`);
 
-      let productId;
-
-      if (result.events && result.events.ProductRegistered) {
-        productId = result.events.ProductRegistered.returnValues.productId;
-      } else if (result.logs && result.logs.length > 0) {
-        const registrationLog = result.logs.find(
-          (log) =>
-            log.event === "ProductRegistered" ||
-            log.topics?.[0]?.includes("ProductRegistered")
-        );
-
-        if (registrationLog && registrationLog.returnValues) {
-          productId = registrationLog.returnValues.productId;
-        }
-      }
-
-      if (productId) {
-        showSuccess(`ลงทะเบียนสินค้าสำเร็จ! รหัสสินค้า: ${productId}`);
-      } else {
-        showSuccess("ลงทะเบียนสินค้าสำเร็จ!");
-      }
-
+      // รีเซ็ตฟอร์ม
       setFormData({
         productName: "",
         productModel: "",
@@ -175,10 +168,11 @@ export default function SellerDashboard() {
         initialPrice: "",
       });
 
+      // โหลดข้อมูลใหม่
       fetchProducts();
     } catch (error) {
       console.error("Error registering product:", error);
-      showError("เกิดข้อผิดพลาดในการลงทะเบียนสินค้า");
+      showError(`เกิดข้อผิดพลาดในการลงทะเบียนสินค้า: ${error.message}`);
     } finally {
       setIsLoading(false);
     }

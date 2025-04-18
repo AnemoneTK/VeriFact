@@ -138,27 +138,26 @@ export default function AdminProductsPage() {
     }
   };
 
+  // ฟังก์ชันโอนสินค้า
   const handleTransferProduct = async (productId, newOwner, price) => {
-    if (!verifactContract || !account || !isAdmin) {
-      showError("ไม่มีสิทธิ์เพียงพอ");
-      return;
-    }
-
     try {
       setIsLoading(true);
 
-      // โอนสินค้าให้กับผู้ซื้อ
+      // แปลง price เป็นตัวเลข
+      const priceValue = parseInt(price, 10);
+
       await verifactContract.methods
-        .transferProduct(productId, newOwner, price)
-        .send({ from: account });
+        .transferProduct(productId, newOwner, priceValue)
+        .send();
 
-      showSuccess("โอนสินค้าสำเร็จ");
+      showSuccess("โอนสินค้าสำเร็จ!");
 
-      // โหลดข้อมูลใหม่
+      // โหลดข้อมูลใหม่หรือนำทางไปหน้าอื่น
       fetchProducts();
+      // หรือ router.push('/dashboard');
     } catch (error) {
       console.error("Error transferring product:", error);
-      showError("เกิดข้อผิดพลาดในการโอนสินค้า");
+      showError(`เกิดข้อผิดพลาดในการโอนสินค้า: ${error.message}`);
     } finally {
       setIsLoading(false);
     }

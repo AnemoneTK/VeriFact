@@ -15,7 +15,7 @@
     "@prisma/client": "^6.5.0",
     "@walletconnect/web3-provider": "^1.8.0",
     "antd": "^5.24.7",
-    "ethers": "^6.13.5",
+    "ethers": "^6.8.1",
     "next": "^15.2.3",
     "next-auth": "^4.24.11",
     "react": "^19.0.0",

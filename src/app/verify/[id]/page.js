@@ -19,10 +19,11 @@ export default function VerifyResultPage({ params }) {
   const [isLoading, setIsLoading] = useState(true);
   const [isAuthentic, setIsAuthentic] = useState(null);
   const [verificationStatus, setVerificationStatus] = useState("loading"); // loading, verified, unverified, error
-  const { verifactContract, isConnected, connectWallet } = useWeb3();
+  const { verifactContract, isConnected, connectWallet, account } = useWeb3();
   const { showError, showSuccess } = useToast();
   const router = useRouter();
   const [successorRequests, setSuccessorRequests] = useState([]);
+
   // ฟังก์ชันย่อที่อยู่กระเป๋าเงิน
   const truncateAddress = (address, startLength = 6, endLength = 4) => {
     if (!address) return "";
@@ -31,69 +32,6 @@ export default function VerifyResultPage({ params }) {
       return "-";
     }
     return `${address.slice(0, startLength)}...${address.slice(-endLength)}`;
-  };
-
-  const getAllProducts = async () => {
-    if (!verifactContract) return [];
-
-    try {
-      let products = [];
-      let id = 1;
-      let notFound = 0;
-
-      // ค้นหาจนกว่าจะไม่พบสินค้าติดต่อกัน 5 ครั้ง
-      while (notFound < 5) {
-        try {
-          const product = await verifactContract.methods.getProduct(id).call();
-
-          // แปลงข้อมูล
-          const formattedProduct = {
-            productId: product[0]?.toString() || id.toString(),
-            details: product[1] || "ไม่มีรายละเอียด",
-            initialPrice: product[2]?.toString() || "0",
-            currentOwner: product[3] || "ไม่ระบุเจ้าของ",
-            createdAt: product[4]?.toString() || "0",
-            isActive: product[5] || false,
-            designatedSuccessor: product[6] || null,
-          };
-
-          if (formattedProduct && formattedProduct.details) {
-            products.push(formattedProduct);
-            notFound = 0; // รีเซ็ตตัวนับเมื่อพบสินค้า
-          } else {
-            notFound++;
-          }
-        } catch (error) {
-          notFound++;
-        }
-        id++;
-      }
-
-      return products;
-    } catch (error) {
-      console.error("Error fetching all products:", error);
-      return [];
-    }
-  };
-  const findProductBySerialNumber = async (serialNumber) => {
-    if (!verifactContract) return null;
-
-    try {
-      const productId = await verifactContract.methods
-        .findProductBySerialNumber(serialNumber)
-        .call();
-
-      if (productId) {
-        const product = await verifactContract.methods
-          .getProduct(productId)
-          .call();
-        return product;
-      }
-      return null;
-    } catch (error) {
-      console.error("Error finding product by serial number:", error);
-      return null;
-    }
   };
 
   // เพิ่มการค้นหาด้วยหมายเลขซีเรียล
@@ -106,46 +44,47 @@ export default function VerifyResultPage({ params }) {
       }
 
       try {
-        // ตรวจสอบว่าเป็นการค้นหาด้วยหมายเลขซีเรียลหรือไม่
-        const isSerialNumber =
-          productId.includes("SN-") ||
-          /^[A-Z]{2}-\d{4}-\d{4}-\d{4}$/.test(productId);
-
+        // ถ้าผู้ใช้เชื่อมต่อกระเป๋าเงินแล้ว ใช้การเรียก contract โดยตรง
         if (isConnected && verifactContract) {
-          let productData = null;
+          const isSerialNumber =
+            productId.includes("SN-") ||
+            /^[A-Z]{2}-\d{4}-\d{4}-\d{4}$/.test(productId);
+          let actualProductId = productId;
 
           // ถ้าเป็นหมายเลขซีเรียล
           if (isSerialNumber) {
-            productData = await findProductBySerialNumber(productId);
+            actualProductId = await verifactContract.methods
+              .findProductBySerialNumber(productId)
+              .call();
 
-            if (!productData) {
+            if (!actualProductId) {
               setIsAuthentic(false);
               setVerificationStatus("unverified");
               setIsLoading(false);
               return;
             }
           }
-          // กรณีปกติ
-          else {
-            const verifyResult = await verifactContract.methods
-              .verifyProduct(productId)
-              .call();
 
-            if (!verifyResult.exists) {
-              setIsAuthentic(false);
-              setVerificationStatus("unverified");
-              setIsLoading(false);
-              return;
-            }
+          // ตรวจสอบว่ามีสินค้านี้หรือไม่
+          const verifyResult = await verifactContract.methods
+            .verifyProduct(actualProductId)
+            .call();
 
-            productData = await verifactContract.methods
-              .getProduct(productId)
-              .call();
+          if (!verifyResult.exists) {
+            setIsAuthentic(false);
+            setVerificationStatus("unverified");
+            setIsLoading(false);
+            return;
           }
+
+          // ดึงข้อมูลสินค้า
+          const productData = await verifactContract.methods
+            .getProduct(actualProductId)
+            .call();
 
           // แปลงข้อมูลสินค้า
           const formattedProduct = {
-            productId: productData[0]?.toString() || productId,
+            productId: productData[0]?.toString() || actualProductId,
             details: productData[1] || "ไม่มีรายละเอียด",
             initialPrice: productData[2]?.toString() || "0",
             currentOwner: productData[3] || "ไม่ระบุเจ้าของ",
@@ -155,17 +94,50 @@ export default function VerifyResultPage({ params }) {
           };
 
           setProductData(formattedProduct);
-          // ... (โค้ดที่เหลือคงเดิม)
+
+          // ดึงประวัติการโอน
+          const history = await verifactContract.methods
+            .getTransferHistory(actualProductId)
+            .call();
+          setTransferHistory(history);
+
+          // ตั้งค่าความถูกต้องของสินค้า
+          setIsAuthentic(true);
+          setVerificationStatus("verified");
+        }
+        // ถ้าผู้ใช้ไม่ได้เชื่อมต่อกระเป๋าเงิน ใช้ API แทน
+        else {
+          // เรียกใช้ API ที่เซิร์ฟเวอร์
+          const response = await fetch(`/api/verify-product?id=${productId}`);
+
+          if (!response.ok) {
+            throw new Error("Failed to fetch product data from API");
+          }
+
+          const data = await response.json();
+
+          if (!data.exists) {
+            setIsAuthentic(false);
+            setVerificationStatus("unverified");
+            setIsLoading(false);
+            return;
+          }
+
+          setProductData(data.product);
+          setTransferHistory(data.transferHistory);
+          setIsAuthentic(true);
+          setVerificationStatus("verified");
         }
       } catch (error) {
         console.error("Error fetching product data:", error);
         setVerificationStatus("error");
+      } finally {
         setIsLoading(false);
       }
     };
 
     fetchProductData();
-  }, [productId, verifactContract, isConnected]);
+  }, [productId, verifactContract, isConnected, account]);
 
   // ฟังก์ชันแสดงสถานะการยืนยัน
   const renderVerificationStatus = () => {

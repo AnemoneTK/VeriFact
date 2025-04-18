@@ -26,86 +26,14 @@ export default function VerifyPage() {
     setIsSearching(true);
 
     try {
-      // ค้นหาด้วย verifactContract หากเชื่อมต่อแล้ว
-      if (isConnected && verifactContract) {
-        try {
-          // ตรวจสอบด้วย productId ก่อน
-          const result = await verifactContract.methods
-            .verifyProduct(productId)
-            .call();
-
-          if (result.exists) {
-            // ถ้าพบสินค้า ให้นำทางไปยังหน้าผลลัพธ์
-            router.push(`/verify/${productId}`);
-            return;
-          }
-
-          // ถ้าไม่พบสินค้าด้วย productId ให้ลองค้นหาด้วยหมายเลขซีเรียล
-          // ดึงทุกสินค้าและค้นหาจากรายละเอียด
-          const allProducts = await getAllProducts();
-
-          // ค้นหาสินค้าที่มีหมายเลขซีเรียลตรงกับที่ระบุ
-          const matchedProduct = allProducts.find((product) => {
-            const parts = product.details.split("|");
-            if (parts.length >= 3) {
-              const serialNumber = parts[2].trim();
-              return serialNumber === productId.trim();
-            }
-            return false;
-          });
-
-          if (matchedProduct) {
-            // หากพบสินค้าที่มีหมายเลขซีเรียลตรงกัน ให้นำทางไปยังหน้าผลลัพธ์ด้วย productId
-            router.push(`/verify/${matchedProduct.productId}`);
-            return;
-          }
-
-          // ถ้าไม่พบทั้งสองกรณี
-          showError("ไม่พบสินค้านี้ในระบบ");
-          setIsSearching(false);
-        } catch (err) {
-          console.error("Error searching products:", err);
-          showError("เกิดข้อผิดพลาดในการค้นหาสินค้า");
-          setIsSearching(false);
-        }
-      } else {
-        // ถ้าไม่ได้เชื่อมต่อกระเป๋าเงิน ให้นำทางไปยังหน้าผลลัพธ์โดยตรง
-        // (ในกรณีนี้จะต้องมีการค้นหาด้วยหมายเลขซีเรียลในหน้าผลลัพธ์อีกครั้ง)
-        router.push(`/verify/${productId}`);
-      }
+      // ไม่ว่าจะเชื่อมต่อ wallet หรือไม่ เราสามารถส่งผู้ใช้ไปยังหน้าผลลัพธ์ได้
+      // โดยให้หน้าผลลัพธ์ดูแลเรื่องการใช้ API หรือ contract โดยตรง
+      router.push(`/verify/${productId}`);
     } catch (err) {
-      console.error("Error verifying product:", err);
-      showError("เกิดข้อผิดพลาดในการตรวจสอบสินค้า โปรดลองอีกครั้ง");
+      console.error("Error searching product:", err);
+      showError("เกิดข้อผิดพลาดในการค้นหาสินค้า โปรดลองอีกครั้ง");
       setIsSearching(false);
     }
-  };
-
-  const getAllProducts = async () => {
-    // ต้องเพิ่มฟังก์ชันนี้เพื่อดึงสินค้าทั้งหมดจาก Smart Contract
-    // เช่น อาจใช้การลูปค้นหาสินค้าตั้งแต่ ID 1 ไปเรื่อยๆ จนไม่พบสินค้า
-
-    // ตัวอย่าง (ต้องปรับให้เข้ากับ Smart Contract จริง)
-    let products = [];
-    let id = 1;
-    let notFound = 0;
-
-    // ค้นหาจนกว่าจะเจอสินค้าไม่พบติดต่อกัน 5 ครั้ง
-    while (notFound < 5) {
-      try {
-        const product = await verifactContract.methods.getProduct(id).call();
-        if (product && product.details) {
-          products.push(product);
-          notFound = 0; // รีเซ็ตตัวนับเมื่อพบสินค้า
-        } else {
-          notFound++;
-        }
-      } catch (error) {
-        notFound++;
-      }
-      id++;
-    }
-
-    return products;
   };
 
   // แสดงโหมดสแกน QR Code (จำลอง)
@@ -248,7 +176,7 @@ export default function VerifyPage() {
                       htmlFor="productId"
                       className="block text-sm font-medium text-gray-700 mb-2"
                     >
-                      รหัสสินค้า
+                      รหัสสินค้าหรือหมายเลขซีเรียล
                     </label>
                     <input
                       id="productId"
@@ -256,11 +184,11 @@ export default function VerifyPage() {
                       value={productId}
                       onChange={(e) => setProductId(e.target.value)}
                       className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
-                      placeholder="กรอกรหัสสินค้าที่ต้องการตรวจสอบ"
+                      placeholder="กรอกรหัสสินค้าหรือหมายเลขซีเรียล"
                       required
                     />
                     <p className="mt-2 text-sm text-gray-500">
-                      รหัสสินค้าอยู่บนกล่องหรือสติกเกอร์สินค้า
+                      รหัสสินค้าหรือหมายเลขซีเรียลอยู่บนกล่องหรือสติกเกอร์สินค้า
                     </p>
                   </div>
                   <div>
@@ -389,9 +317,9 @@ export default function VerifyPage() {
                 </h4>
                 <p className="text-gray-600">
                   ได้ คุณสามารถตรวจสอบสินค้าได้โดยไม่ต้องเชื่อมต่อกระเป๋าเงิน
+                  ระบบของเราจะใช้บริการ API ที่ให้ข้อมูลจากบล็อกเชนโดยตรง
                   แต่การเชื่อมต่อกระเป๋าเงินจะช่วยให้คุณเข้าถึงฟีเจอร์เพิ่มเติม
-                  เช่น การดูประวัติแบบละเอียด
-                  หรือการรับกรรมสิทธิ์ในสินค้าดิจิทัล
+                  เช่น การโอนสินค้า หรือการจัดการสินค้าที่คุณเป็นเจ้าของ
                 </p>
               </div>
             </div>

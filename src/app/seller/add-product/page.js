@@ -45,15 +45,13 @@ export default function AddProductPage() {
   const handleRegisterProduct = async (e) => {
     e.preventDefault();
 
-    // สร้าง productId อัตโนมัติหากไม่ได้ระบุ
     const productId = formData.productId || `PROD-${Date.now()}`;
-
-    // รวมรายละเอียดสินค้า
     const details = `${formData.productName} | ${formData.productModel} | ${formData.serialNumber}`;
 
-    try {
-      const initialPrice = parseInt(formData.initialPrice, 10);
+    // ตรวจสอบและแปลง initialPrice เป็น string
+    const initialPrice = formData.initialPrice.toString();
 
+    try {
       const result = await verifactContract.registerProduct(
         productId,
         details,
@@ -82,12 +80,12 @@ export default function AddProductPage() {
     e.preventDefault();
 
     // เตรียมข้อมูล
-    const productId = formData.productId || `PROD-${Date.now()}`;
-    const details = `${formData.productName} | ${formData.productModel} | ${formData.serialNumber}`;
-    const initialPrice = parseInt(formData.initialPrice, 10);
+    const generatedProductId = productId || `PROD-${Date.now()}`;
+    const details = `${productName} | ${productModel} | ${serialNumber}`;
+    const initialPriceNum = parseInt(price, 10);
 
     // ตรวจสอบข้อมูลเบื้องต้น
-    if (!productId || !details || !initialPrice) {
+    if (!generatedProductId || !details || !initialPriceNum) {
       setError("กรุณากรอกข้อมูลให้ครบถ้วน");
       return;
     }
@@ -97,60 +95,60 @@ export default function AddProductPage() {
     setSuccess("");
 
     try {
-      // ตรวจสอบสถานะผู้ขาย
-      const isManufacturer = await verifactContract.methods
-        .isSeller(account)
-        .call();
+      // ลงทะเบียนสินค้าด้วย Web3Context
+      const result = await registerProduct(
+        generatedProductId,
+        details,
+        initialPriceNum
+      );
 
-      if (!isManufacturer) {
-        throw new Error("คุณไม่ได้รับอนุญาตให้เพิ่มสินค้า");
+      if (result) {
+        setSuccess(`เพิ่มสินค้าสำเร็จ! รหัสสินค้า: ${generatedProductId}`);
+
+        // รีเซ็ตฟอร์ม
+        setProductName("");
+        setProductModel("");
+        setSerialNumber("");
+        setPrice("");
+        setProductId("");
+
+        // นำทางไปที่หน้ารายการสินค้า
+        setTimeout(() => {
+          router.push("/seller/dashboard");
+        }, 3000);
       }
-
-      // ตรวจสอบว่ามีสินค้านี้อยู่แล้วหรือไม่
-      try {
-        await verifactContract.methods.getProduct(productId).call();
-        throw new Error("รหัสสินค้านี้มีอยู่ในระบบแล้ว");
-      } catch (checkError) {
-        // ถ้า getProduct throw error แสดงว่ายังไม่มีสินค้า ให้ดำเนินการต่อ
-        if (!checkError.message.includes("Product does not exist")) {
-          throw checkError;
-        }
-      }
-
-      // ลงทะเบียนสินค้า
-      const result = await verifactContract.methods
-        .registerProduct(productId, details, initialPrice)
-        .send({ from: account });
-
-      setSuccess(`เพิ่มสินค้าสำเร็จ! รหัสสินค้า: ${productId}`);
-
-      // รีเซ็ตฟอร์ม
-      setFormData({
-        productName: "",
-        productModel: "",
-        serialNumber: "",
-        initialPrice: "",
-        productId: "",
-      });
-
-      // นำทางไปที่หน้ารายการสินค้า
-      setTimeout(() => {
-        router.push("/seller/products");
-      }, 3000);
     } catch (err) {
       console.error("Error adding product:", err);
 
       // จัดการ error message ที่เป็นมิตร
-      const errorMessage = err.message.includes("User denied transaction")
-        ? "คุณยกเลิกการทำธุรกรรม"
-        : err.message || "เกิดข้อผิดพลาดในการเพิ่มสินค้า โปรดลองอีกครั้ง";
+      const errorMessage =
+        err.reason ||
+        err.message ||
+        (err.code === 4001
+          ? "คุณยกเลิกการทำธุรกรรม"
+          : "เกิดข้อผิดพลาดในการเพิ่มสินค้า โปรดลองอีกครั้ง");
+
+      // เพิ่มการตรวจสอบสิทธิ์ก่อนการลงทะเบียน
+      if (verifactContract) {
+        try {
+          const isSellerActive = await verifactContract.methods
+            .isSeller(account)
+            .call();
+
+          if (!isSellerActive) {
+            setError("คุณไม่ได้รับอนุญาตให้ลงทะเบียนสินค้า");
+            return;
+          }
+        } catch (sellerCheckError) {
+          console.error("Error checking seller status:", sellerCheckError);
+        }
+      }
 
       setError(errorMessage);
     } finally {
       setIsLoading(false);
     }
   };
-
   // ถ้าผู้ใช้ยังไม่ได้เข้าสู่ระบบ
   if (!user) {
     return (

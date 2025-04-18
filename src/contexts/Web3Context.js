@@ -367,17 +367,30 @@ export function Web3Provider({ children }) {
     }
   }, []);
 
+  // เพิ่มใน Web3Context.js
   const findProductBySerialNumber = useCallback(
     async (serialNumber) => {
       if (!verifactContract) return null;
       try {
-        // เรียกใช้เมธอดใหม่จาก Smart Contract
         const productId = await verifactContract.methods
           .findProductBySerialNumber(serialNumber)
           .call();
 
-        if (productId) {
-          return await verifactContract.methods.getProduct(productId).call();
+        if (productId && productId !== "") {
+          // ดึงข้อมูลสินค้าเพิ่มเติมหลังจากได้ productId
+          const product = await verifactContract.methods
+            .getProduct(productId)
+            .call();
+
+          return {
+            productId,
+            details: product.details,
+            initialPrice: product.initialPrice.toString(),
+            currentOwner: product.currentOwner,
+            createdAt: product.createdAt.toString(),
+            isActive: product.isActive,
+            designatedSuccessor: product.designatedSuccessor,
+          };
         }
         return null;
       } catch (error) {
@@ -421,11 +434,17 @@ export function Web3Provider({ children }) {
     async (productId, details, initialPrice) => {
       if (!verifactContract || !account) return null;
       try {
-        // เปลี่ยนเป็นการเรียกใช้แบบตรง
+        // แปลงค่า initialPrice เป็น string ถ้าไม่ใช่
+        const priceParam =
+          typeof initialPrice === "number"
+            ? initialPrice.toString()
+            : initialPrice;
+
+        // เรียกใช้ฟังก์ชัน registerProduct
         const tx = await verifactContract.registerProduct(
           productId,
           details,
-          initialPrice
+          priceParam
         );
 
         // รอการ confirm transaction
@@ -548,7 +567,6 @@ export function Web3Provider({ children }) {
   };
 
   // web3.js compatibility methods
-  // สร้างออบเจกต์ที่มีเมธอดแบบเดียวกับ web3.js เพื่อความเข้ากันได้
   const createContractMethodsCompatibility = useCallback(() => {
     if (!verifactContract) return {};
 
@@ -560,7 +578,6 @@ export function Web3Provider({ children }) {
 
         methods[methodName] = (...args) => {
           return {
-            // เพิ่ม async เพื่อรองรับ Promise
             call: async (options = {}) => {
               try {
                 return await verifactContract[methodName](...args);
@@ -571,15 +588,13 @@ export function Web3Provider({ children }) {
             },
             send: async (options = {}) => {
               try {
-                // ใช้ send จาก contract โดยตรง
+                // แก้ไข: ไม่ส่ง options แบบ web3.js แล้ว
+                // เรียกใช้ฟังก์ชันโดยตรงแบบ ethers.js
                 const tx = await verifactContract[methodName](...args);
 
-                // รอการ confirm transaction
-                if (tx.wait) {
-                  await tx.wait();
-                }
-
-                return tx;
+                // รอการยืนยันธุรกรรม
+                const receipt = await tx.wait();
+                return receipt;
               } catch (error) {
                 console.error(`Error sending ${methodName}:`, error);
                 throw error;
@@ -597,9 +612,11 @@ export function Web3Provider({ children }) {
     async (productId, successorAddress) => {
       if (!verifactContract || !account) return null;
       try {
+        // เรียกฟังก์ชัน setSuccessor จาก contract
         const result = await verifactContract.methods
           .setSuccessor(productId, successorAddress)
-          .send({ from: account });
+          .send();
+
         return result;
       } catch (error) {
         console.error("Error setting successor:", error);
@@ -613,9 +630,11 @@ export function Web3Provider({ children }) {
     async (productId) => {
       if (!verifactContract || !account) return null;
       try {
+        // เรียกฟังก์ชัน requestSuccession จาก contract
         const result = await verifactContract.methods
           .requestSuccession(productId)
-          .send({ from: account });
+          .send();
+
         return result;
       } catch (error) {
         console.error("Error requesting succession:", error);
@@ -629,9 +648,14 @@ export function Web3Provider({ children }) {
     async (productId, successorAddress, price = 0) => {
       if (!verifactContract || !account) return null;
       try {
+        // แปลง price เป็นตัวเลข
+        const priceValue = parseInt(price, 10);
+
+        // เรียกฟังก์ชัน approveSuccession จาก contract
         const result = await verifactContract.methods
-          .approveSuccession(productId, successorAddress, price)
-          .send({ from: account });
+          .approveSuccession(productId, successorAddress, priceValue)
+          .send();
+
         return result;
       } catch (error) {
         console.error("Error approving succession:", error);

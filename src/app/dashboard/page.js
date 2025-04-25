@@ -13,6 +13,7 @@ import Image from "next/image";
 
 export default function DashboardPage() {
   const [userProducts, setUserProducts] = useState([]);
+  const [praseProduct, setPraseProduct] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
   const [showProfileMenu, setShowProfileMenu] = useState(false);
@@ -23,6 +24,7 @@ export default function DashboardPage() {
     account,
     isConnected,
     isAdmin,
+    isSeller,
     connectWallet,
     disconnectWallet,
   } = useWeb3();
@@ -32,6 +34,22 @@ export default function DashboardPage() {
   const profileMenuRef = useRef(null);
 
   useEffect(() => {
+    if (userProducts) {
+      console.log("userProducts", userProducts);
+      const parsed = userProducts.map((item) => ({
+        productId: item[0],
+        description: item[1],
+        amount: item[2],
+        address: item[3],
+        timestamp: item[4],
+        status: item[5],
+        toAddress: item[6],
+      }));
+      setPraseProduct(parsed);
+      console.log("praseProduct", praseProduct);
+    }
+  }, [userProducts]);
+  useEffect(() => {
     async function fetchUserProducts() {
       if (!isConnected || !account || !verifactContract) {
         setIsLoading(false);
@@ -39,7 +57,7 @@ export default function DashboardPage() {
       }
 
       // ถ้าเป็น admin ให้ไปยังหน้า Admin Dashboard แทน
-      if (isAdmin) {
+      if (isAdmin || isSeller) {
         router.push("/seller/dashboard");
         return;
       }
@@ -80,7 +98,7 @@ export default function DashboardPage() {
     }
 
     fetchUserProducts();
-  }, [account, verifactContract, isConnected, isAdmin, router]);
+  }, [account, verifactContract, isConnected, isAdmin, isSeller, router]);
 
   // ฟังก์ชันสำหรับย่อที่อยู่กระเป๋าเงิน
   const truncateAddress = (address, startLength = 6, endLength = 4) => {
@@ -609,7 +627,7 @@ export default function DashboardPage() {
               </div>
             )}
 
-            {userProducts.length === 0 ? (
+            {praseProduct.length === 0 ? (
               <div className="bg-gray-50 rounded-lg p-6 text-center">
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
@@ -641,7 +659,7 @@ export default function DashboardPage() {
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {userProducts.map((product) => (
+                {praseProduct.map((product) => (
                   <div
                     key={product.productId}
                     className="border border-gray-200 rounded-lg overflow-hidden hover:shadow-md transition-shadow bg-white"
@@ -650,13 +668,13 @@ export default function DashboardPage() {
                       <div className="flex justify-between items-start">
                         <div>
                           <h3 className="text-lg font-semibold text-gray-900 mb-1">
-                            {product.details.split("|")[0] || "สินค้า"}
+                            {product.description?.split("|")[0] || "สินค้า"}
                           </h3>
                           <p className="text-sm text-gray-500 mb-3">
                             รหัส: {product.productId}
                           </p>
                         </div>
-                        {product.isActive ? (
+                        {product.status ? (
                           <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
                             แอคทีฟ
                           </span>
@@ -673,13 +691,13 @@ export default function DashboardPage() {
                             วันที่ได้รับ:
                           </span>
                           <span className="text-sm text-gray-700">
-                            {formatDate(Number(product.createdAt) * 1000)}
+                            {formatDate(Number(product.timestamp) * 1000)}
                           </span>
                         </div>
                         <div className="flex justify-between">
                           <span className="text-sm text-gray-500">ราคา:</span>
                           <span className="text-sm text-gray-700">
-                            {product.initialPrice} บาท
+                            {product.amount} บาท
                           </span>
                         </div>
                       </div>

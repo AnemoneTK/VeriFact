@@ -35,7 +35,7 @@ export function Web3Provider({ children }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [isAdmin, setIsAdmin] = useState(false);
-
+  const [isSeller, setIsSeller] = useState(false);
   // ตรวจสอบสถานะการเชื่อมต่อจาก localStorage
   const [persistentConnection, setPersistentConnection] = useState(false);
 
@@ -131,6 +131,13 @@ export function Web3Provider({ children }) {
                   accountAddressStr.toLowerCase() ===
                     adminAddressStr.toLowerCase()
                 );
+                try {
+                  const sellerStatus = await contract.isSeller(accountAddress);
+                  setIsSeller(sellerStatus);
+                } catch (sellerError) {
+                  console.error("Error checking seller status:", sellerError);
+                  setIsSeller(false);
+                }
               } catch (adminError) {
                 console.error("Error checking admin status:", adminError);
               }
@@ -201,6 +208,7 @@ export function Web3Provider({ children }) {
       setSigner(null);
       setVerifactContract(null);
       setIsAdmin(false);
+      setIsSeller(false);
 
       console.log("ตัดการเชื่อมต่อเรียบร้อย");
       return true;
@@ -287,6 +295,15 @@ export function Web3Provider({ children }) {
                     accountAddressStr.toLowerCase() ===
                       adminAddressStr.toLowerCase()
                   );
+                  try {
+                    const sellerStatus = await contract.isSeller(
+                      accountAddress
+                    );
+                    setIsSeller(sellerStatus);
+                  } catch (sellerError) {
+                    console.error("Error checking seller status:", sellerError);
+                    setIsSeller(false);
+                  }
                 } catch (error) {
                   console.error("Error checking admin status:", error);
                 }
@@ -674,6 +691,7 @@ export function Web3Provider({ children }) {
     chainId,
     isConnected,
     isAdmin,
+    isSeller,
     verifactContract: verifactContract
       ? {
           ...verifactContract,

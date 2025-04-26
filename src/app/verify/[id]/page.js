@@ -35,6 +35,7 @@ export default function VerifyResultPage({ params }) {
   };
 
   // เพิ่มการค้นหาด้วยหมายเลขซีเรียล
+  // ใน useEffect
   useEffect(() => {
     const fetchProductData = async () => {
       if (!productId) {
@@ -194,6 +195,35 @@ export default function VerifyResultPage({ params }) {
               </h3>
               <p className="text-sm text-gray-600">
                 ไม่พบข้อมูลสินค้านี้ในระบบ หรือสินค้าอาจถูกระงับ
+              </p>
+            </div>
+          </div>
+        );
+      case "blockchain_unavailable":
+        return (
+          <div className="flex items-center">
+            <div className="w-16 h-16 rounded-full bg-yellow-100 flex items-center justify-center">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="h-8 w-8 text-yellow-600"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                />
+              </svg>
+            </div>
+            <div className="ml-4">
+              <h3 className="text-lg font-medium text-gray-900">
+                ไม่สามารถเชื่อมต่อได้
+              </h3>
+              <p className="text-sm text-gray-600">
+                ไม่สามารถเชื่อมต่อกับ blockchain ได้ในขณะนี้ โปรดลองใหม่ภายหลัง
               </p>
             </div>
           </div>

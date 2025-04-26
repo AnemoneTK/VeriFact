@@ -22,7 +22,6 @@ export default function VerifyPage() {
       showError("กรุณากรอกรหัสสินค้าหรือหมายเลขซีเรียล");
       return;
     }
-
     setIsSearching(true);
 
     try {
@@ -35,7 +34,20 @@ export default function VerifyPage() {
       setIsSearching(false);
     }
   };
-
+  const handleConnectWallet = async () => {
+    try {
+      const result = await connectWallet();
+      if (!result) {
+        // ถ้าไม่มี MetaMask หรือมีปัญหาอื่นๆ
+        showInfo(
+          "กรุณาติดตั้ง MetaMask หรือเบราว์เซอร์ที่รองรับ Web3 เพื่อเชื่อมต่อกระเป๋าเงิน",
+          5000
+        );
+      }
+    } catch (err) {
+      showError("เกิดข้อผิดพลาดในการเชื่อมต่อกระเป๋าเงิน: " + err.message);
+    }
+  };
   // แสดงโหมดสแกน QR Code (จำลอง)
   const handleScanToggle = () => {
     if (scanMode) {
@@ -76,7 +88,7 @@ export default function VerifyPage() {
 
             {!isConnected && (
               <button
-                onClick={connectWallet}
+                onClick={handleConnectWallet}
                 className="inline-flex items-center px-3 py-1.5 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700"
               >
                 <svg

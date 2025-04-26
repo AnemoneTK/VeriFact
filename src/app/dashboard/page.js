@@ -57,7 +57,12 @@ export default function DashboardPage() {
       }
 
       // ถ้าเป็น admin ให้ไปยังหน้า Admin Dashboard แทน
-      if (isAdmin || isSeller) {
+      if (isAdmin) {
+        router.push("/seller/dashboard");
+        return;
+      }
+
+      if (isSeller) {
         router.push("/seller/dashboard");
         return;
       }

@@ -7,7 +7,7 @@ import React, {
   useEffect,
   useCallback,
 } from "react";
-import * as ethers from "ethers";
+import { ethers } from "ethers";
 import {
   VERIFACT_ABI,
   VERIFACT_CONTRACT_ADDRESS,
@@ -64,7 +64,14 @@ export function Web3Provider({ children }) {
 
       // ตรวจสอบว่ามี MetaMask หรือไม่
       if (typeof window === "undefined" || !window.ethereum) {
-        throw new Error("ไม่พบ MetaMask กรุณาติดตั้งก่อนใช้งาน");
+        setError("ไม่พบ MetaMask กรุณาติดตั้งก่อนใช้งาน");
+        return null;
+      }
+      if (!window.ethereum.request) {
+        setError(
+          "เบราว์เซอร์ของคุณมี ethereum provider แต่ไม่รองรับ request method"
+        );
+        return null;
       }
 
       // ขอสิทธิ์เข้าถึงบัญชี
@@ -189,6 +196,52 @@ export function Web3Provider({ children }) {
       setLoading(false);
     }
   }, []);
+
+  const executeWithRetry = async (fn, retries = 3, delay = 1000) => {
+    try {
+      return await fn();
+    } catch (error) {
+      if (retries <= 0) throw error;
+
+      console.log(
+        `Operation failed, retrying in ${delay}ms... (${retries} retries left)`
+      );
+      await new Promise((resolve) => setTimeout(resolve, delay));
+      return executeWithRetry(fn, retries - 1, delay * 1.5);
+    }
+  };
+
+  // Add fallback providers
+  const FALLBACK_PROVIDERS = ["https://rpc.ankr.com/eth_holesky "];
+
+  // Modify your contract call function to use retry and fallback
+  const callContractMethodWithFallback = async (methodName, ...args) => {
+    let lastError;
+
+    for (const providerUrl of FALLBACK_PROVIDERS) {
+      try {
+        // สร้าง provider ด้วย URL ปัจจุบัน (แก้ไขให้เข้ากับ ethers v6)
+        const fallbackProvider = new ethers.JsonRpcProvider(providerUrl);
+        const fallbackContract = new ethers.Contract(
+          VERIFACT_CONTRACT_ADDRESS,
+          VERIFACT_ABI,
+          fallbackProvider
+        );
+
+        // Try to execute with retry
+        return await executeWithRetry(() =>
+          fallbackContract[methodName](...args)
+        );
+      } catch (error) {
+        console.error(`Error with provider ${providerUrl}:`, error);
+        lastError = error;
+        // Continue to the next provider
+      }
+    }
+
+    // If all providers fail, throw the last error
+    throw lastError;
+  };
 
   // ฟังก์ชันตัดการเชื่อมต่อกระเป๋าเงิน
   const disconnectWallet = useCallback(() => {

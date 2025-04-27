@@ -1,65 +1,46 @@
+// src/app/api/auth/[...nextauth]/route.js
 import NextAuth from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 
-export const authOptions = {
+// ตั้งค่า NextAuth ตามที่ต้องการ
+const handler = NextAuth({
   providers: [
     CredentialsProvider({
-      name: "Ethereum",
+      name: "Credentials",
       credentials: {
         address: { label: "Address", type: "text" },
-        signature: { label: "Signature", type: "text" },
       },
       async authorize(credentials) {
-        try {
-          if (!credentials?.address) {
-            return null;
-          }
-
+        // ตรวจสอบและคืนค่า user object
+        if (credentials.address) {
           return {
             id: credentials.address,
-            name: `${credentials.address.substring(
-              0,
-              6
-            )}...${credentials.address.substring(
-              credentials.address.length - 4
-            )}`,
-            email: null,
-            image: null,
             address: credentials.address,
+            name:
+              credentials.address.slice(0, 6) +
+              "..." +
+              credentials.address.slice(-4),
           };
-        } catch (error) {
-          console.error("Wallet auth error:", error);
-          return null;
         }
+        return null;
       },
     }),
   ],
-  secret: process.env.NEXTAUTH_SECRET, // เพิ่มบรรทัดนี้
   session: {
     strategy: "jwt",
-    maxAge: 30 * 24 * 60 * 60,
   },
   callbacks: {
-    async jwt({ token, user }) {
-      if (user) {
-        token.address = user.address;
-      }
-      return token;
-    },
     async session({ session, token }) {
-      if (token && session.user) {
-        session.user.address = token.address;
+      if (token && token.sub) {
+        session.user = {
+          ...session.user,
+          id: token.sub,
+          address: token.sub,
+        };
       }
       return session;
     },
   },
-  pages: {
-    signIn: "/auth/login",
-    error: "/auth/error",
-  },
-  debug: process.env.NODE_ENV === "development",
-};
-
-const handler = NextAuth(authOptions);
+});
 
 export { handler as GET, handler as POST };

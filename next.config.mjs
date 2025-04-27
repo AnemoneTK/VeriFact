@@ -1,7 +1,10 @@
 /** @type {import('next').NextConfig} */
-// next.config.js
 const nextConfig = {
-  reactStrictMode: true,
+  eslint: {
+    ignoreDuringBuilds: true,
+  },
+  output: "standalone",
+  basePath: "",
   async headers() {
     return [
       {

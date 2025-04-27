@@ -22,6 +22,12 @@ export default function TransferHistoryPage() {
       router.push("/auth/login");
     }
   }, [user, isLoading, router]);
+  useEffect(() => {
+    // ถ้าไม่มีผู้ใช้ ให้นำทางไปยังหน้าเข้าสู่ระบบ
+    if (historyData) {
+      console.log("historyData", historyData);
+    }
+  }, [historyData]);
 
   useEffect(() => {
     const fetchTransferHistory = async () => {
@@ -31,56 +37,66 @@ export default function TransferHistoryPage() {
       }
 
       try {
-        // ดึงรายการสินค้าของผู้ใช้ (ทั้งที่เป็นเจ้าของปัจจุบันและไม่ใช่)
-        const productIds = await verifactContract.methods
-          .getProductsByOwner(account)
+        // 1. ดึงรายการ ID สินค้าทั้งหมดในระบบ (ไม่ใช่แค่ที่เป็นเจ้าของปัจจุบัน)
+        const allProductIds = await verifactContract.methods
+          .getAllProductIds()
           .call();
-
-        // สร้างอาเรย์ที่จะเก็บประวัติการโอนทั้งหมด
         let allTransferHistory = [];
 
-        // ดึงประวัติการโอนของแต่ละสินค้า
-        for (const productId of productIds) {
+        // 2. วนลูปตรวจสอบแต่ละสินค้าว่ามีประวัติที่เกี่ยวข้องกับบัญชีนี้หรือไม่
+        for (const productId of allProductIds) {
           try {
             const product = await verifactContract.methods
               .getProduct(productId)
               .call();
-            const history = await verifactContract.methods
+            const transferHistory = await verifactContract.methods
               .getTransferHistory(productId)
               .call();
 
-            // กรองประวัติที่เกี่ยวข้องกับบัญชีปัจจุบัน (ทั้งส่งและรับ)
-            const relevantHistory = history.filter(
+            // 3. กรองประวัติที่เกี่ยวข้องกับบัญชีปัจจุบัน (ทั้งส่งและรับ)
+            const relevantHistory = transferHistory.filter(
               (transfer) =>
-                transfer.from.toLowerCase() === account.toLowerCase() ||
-                transfer.to.toLowerCase() === account.toLowerCase()
+                transfer[0].toLowerCase() === account.toLowerCase() || // ผู้ส่ง (from)
+                transfer[1].toLowerCase() === account.toLowerCase() // ผู้รับ (to)
             );
 
-            // เพิ่มข้อมูลสินค้าลงในประวัติ
-            const formattedHistory = relevantHistory.map((transfer) => ({
-              ...transfer,
-              productId,
-              productDetails: product.details,
-              transferType:
-                transfer.from.toLowerCase() === account.toLowerCase()
-                  ? "sent"
-                  : "received",
-            }));
+            if (relevantHistory.length > 0) {
+              // 4. แปลงข้อมูลให้อยู่ในรูปแบบที่ใช้งานง่าย
+              const formattedHistory = relevantHistory.map((transfer) => ({
+                from: transfer[0],
+                to: transfer[1],
+                price:
+                  typeof transfer[2] === "bigint"
+                    ? transfer[2].toString()
+                    : transfer[2],
+                timestamp:
+                  typeof transfer[3] === "bigint"
+                    ? transfer[3].toString()
+                    : transfer[3],
+                productId,
+                productName: product.details?.split("|")[0] || "ไม่ระบุชื่อ",
+                productDetails: product.details,
+                transferType:
+                  transfer[0].toLowerCase() === account.toLowerCase()
+                    ? "sent"
+                    : "received",
+              }));
 
-            allTransferHistory = [...allTransferHistory, ...formattedHistory];
+              allTransferHistory = [...allTransferHistory, ...formattedHistory];
+            }
           } catch (err) {
-            console.error(
-              `Error fetching history for product ${productId}:`,
-              err
-            );
+            console.error(`Error processing product ${productId}:`, err);
           }
         }
 
-        // เรียงลำดับตามเวลาล่าสุด
-        allTransferHistory.sort(
-          (a, b) => Number(b.timestamp) - Number(a.timestamp)
-        );
+        // 5. เรียงลำดับตามเวลาล่าสุด
+        allTransferHistory.sort((a, b) => {
+          const timeA = BigInt(String(a.timestamp).replace("n", ""));
+          const timeB = BigInt(String(b.timestamp).replace("n", ""));
+          return timeB > timeA ? 1 : -1;
+        });
 
+        console.log("Found transfer history:", allTransferHistory);
         setHistoryData(allTransferHistory);
       } catch (err) {
         console.error("Error fetching transfer history:", err);
@@ -359,7 +375,9 @@ export default function TransferHistoryPage() {
                         className="hover:bg-gray-50"
                       >
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                          {formatDate(Number(item.timestamp) * 1000)}
+                          {item.timestamp
+                            ? formatDate(item.timestamp)
+                            : "ไม่ระบุวันที่"}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-700">
                           {item.productId}
@@ -384,7 +402,7 @@ export default function TransferHistoryPage() {
                             : truncateAddress(item.from)}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                          {Number(item.price) > 0 ? `${item.price} บาท` : "-"}
+                          {item.price ? `${item.price} บาท` : "-"}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                           <Link

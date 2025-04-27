@@ -20,14 +20,39 @@ export function formatAddress(address, startLength = 6, endLength = 4) {
  */
 export function formatDate(timestamp) {
   try {
-    // แปลงเป็น Number หากเป็น BigInt
-    const numTimestamp =
-      typeof timestamp === "bigint" ? Number(timestamp) : timestamp;
+    // ตรวจสอบข้อมูลที่รับเข้ามา
+    if (!timestamp) return "ไม่ระบุวันที่";
+
+    // แปลง BigInt หรือ string ที่เป็น BigInt เป็น Number
+    let numTimestamp;
+
+    if (typeof timestamp === "bigint") {
+      numTimestamp = Number(timestamp);
+    } else if (typeof timestamp === "string" && timestamp.includes("n")) {
+      numTimestamp = Number(timestamp.replace("n", ""));
+    } else {
+      numTimestamp = Number(timestamp);
+    }
+
+    // ตรวจสอบว่าค่าเป็น timestamp ในรูปแบบวินาทีหรือมิลลิวินาที
+    // ถ้าเป็นวินาที (Unix timestamp ปกติ) ต้องคูณด้วย 1000 เพื่อแปลงเป็นมิลลิวินาที
+    // สังเกตจากขนาดของเลข: timestamp ที่เป็นวินาทีมักมีความยาวประมาณ 10 หลัก
+    // timestamp ที่เป็นมิลลิวินาทีมักมีความยาวประมาณ 13 หลัก
+    if (numTimestamp > 0 && numTimestamp < 10000000000) {
+      // ถ้าน้อยกว่า 10 พันล้าน น่าจะเป็น timestamp แบบวินาที
+      numTimestamp = numTimestamp * 1000;
+    }
 
     const date = new Date(numTimestamp);
 
-    // ถ้าวันที่ไม่ถูกต้อง
+    // ตรวจสอบความถูกต้องของวันที่
     if (isNaN(date.getTime())) {
+      console.error(
+        "Invalid date from timestamp:",
+        timestamp,
+        "converted to:",
+        numTimestamp
+      );
       return "วันที่ไม่ถูกต้อง";
     }
 
@@ -40,7 +65,7 @@ export function formatDate(timestamp) {
       minute: "2-digit",
     });
   } catch (error) {
-    console.error("Error formatting date:", error);
+    console.error("Error formatting date:", error, "Input:", timestamp);
     return "วันที่ไม่ถูกต้อง";
   }
 }

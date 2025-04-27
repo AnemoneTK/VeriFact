@@ -25,8 +25,7 @@ export default function VerifyPage() {
     setIsSearching(true);
 
     try {
-      // ไม่ว่าจะเชื่อมต่อ wallet หรือไม่ เราสามารถส่งผู้ใช้ไปยังหน้าผลลัพธ์ได้
-      // โดยให้หน้าผลลัพธ์ดูแลเรื่องการใช้ API หรือ contract โดยตรง
+      console.log("กำลังค้นหาสินค้ารหัส:", productId);
       router.push(`/verify/${productId}`);
     } catch (err) {
       console.error("Error searching product:", err);
